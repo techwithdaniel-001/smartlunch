@@ -115,7 +115,7 @@ Focus on making recipes that are:
           ...messages,
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 1500,
       }),
     })
 
@@ -140,13 +140,16 @@ Focus on making recipes that are:
             ...parsed,
           } as Recipe
           
-          // Generate image for the recipe
+          // Generate image for the recipe (important for final preview)
           try {
             const mainIngredients = recipe.ingredients.slice(0, 5).map(i => i.name).join(', ')
             const presentation = recipe.presentationTips && recipe.presentationTips.length > 0 
               ? recipe.presentationTips[0] 
-              : 'beautifully arranged'
-            const imagePrompt = `Professional high-quality food photography of ${recipe.name}, a real cooked and prepared dish. ${recipe.description}. The actual final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
+              : 'beautifully arranged on a plate'
+            const imagePrompt = `Professional food photography of ${recipe.name}, a delicious cooked and prepared dish. The final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
+            
+            console.log('Generating image for recipe:', recipe.name)
+            console.log('Image prompt:', imagePrompt)
             
             const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
               method: 'POST',
@@ -163,15 +166,30 @@ Focus on making recipes that are:
               }),
             })
 
-            if (imageResponse.ok) {
-              const imageData = await imageResponse.json()
-              if (imageData.data && imageData.data[0]?.url) {
-                recipe.imageUrl = imageData.data[0].url
-              }
+            if (!imageResponse.ok) {
+              const errorText = await imageResponse.text()
+              console.error('Image generation failed:', imageResponse.status, errorText)
+              throw new Error(`Image generation failed: ${imageResponse.status}`)
             }
-          } catch (imageError) {
+
+            const imageData = await imageResponse.json()
+            console.log('Image generation response:', imageData)
+            
+            if (imageData.data && imageData.data[0]?.url) {
+              recipe.imageUrl = imageData.data[0].url
+              console.log('Image URL set:', recipe.imageUrl)
+            } else {
+              console.error('No image URL in response:', imageData)
+            }
+          } catch (imageError: any) {
             console.error('Image generation error:', imageError)
-            // Continue without image if generation fails
+            console.error('Error details:', {
+              message: imageError?.message,
+              stack: imageError?.stack,
+              name: imageError?.name
+            })
+            // Continue without image if generation fails, but log it
+            recipe.imageUrl = undefined
           }
           
           // If we found a recipe, make the message super brief
@@ -190,9 +208,20 @@ Focus on making recipes that are:
       // If no recipe found, that's okay - just return the message
     }
 
+    // Ensure imageUrl is included in the response if recipe exists
+    const responseRecipe = recipe ? {
+      ...recipe,
+      imageUrl: recipe.imageUrl, // Explicitly include imageUrl
+    } : null
+    
+    console.log('Returning recipe with imageUrl:', responseRecipe?.imageUrl ? 'YES' : 'NO')
+    if (responseRecipe) {
+      console.log('Recipe imageUrl:', responseRecipe.imageUrl)
+    }
+    
     return NextResponse.json({
       message: assistantMessage,
-      recipe,
+      recipe: responseRecipe,
     })
   } catch (error: any) {
     console.error('AI Chat Error:', error)

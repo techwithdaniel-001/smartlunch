@@ -83,8 +83,15 @@ export default function Dashboard({
       }
 
       if (data.recipe) {
-        onRecipeGenerated(data.recipe)
-        onRecipeClick(data.recipe)
+        console.log('Recipe received from API:', data.recipe)
+        console.log('Recipe imageUrl:', data.recipe.imageUrl)
+        // Ensure imageUrl is preserved
+        const recipeWithImage = {
+          ...data.recipe,
+          imageUrl: data.recipe.imageUrl,
+        }
+        onRecipeGenerated(recipeWithImage)
+        onRecipeClick(recipeWithImage)
       }
     } catch (error) {
       console.error('Error generating recipe:', error)

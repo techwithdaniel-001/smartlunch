@@ -105,8 +105,18 @@ export default function DashboardPage() {
 
   const handleRecipeGenerated = (recipe: Recipe) => {
     // Store recipe in sessionStorage so it's available on the recipe page
+    console.log('Storing recipe in sessionStorage:', recipe)
+    console.log('Recipe imageUrl:', recipe.imageUrl)
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem(`recipe-${recipe.id}`, JSON.stringify(recipe))
+      const recipeToStore = {
+        ...recipe,
+        imageUrl: recipe.imageUrl, // Explicitly ensure imageUrl is included
+      }
+      sessionStorage.setItem(`recipe-${recipe.id}`, JSON.stringify(recipeToStore))
+      // Verify it was stored
+      const stored = sessionStorage.getItem(`recipe-${recipe.id}`)
+      const parsed = stored ? JSON.parse(stored) : null
+      console.log('Stored recipe imageUrl:', parsed?.imageUrl)
     }
     router.push(`/recipe/${recipe.id}`)
   }

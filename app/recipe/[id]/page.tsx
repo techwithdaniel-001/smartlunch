@@ -67,6 +67,8 @@ export default function RecipePage() {
       if (storedRecipe) {
         try {
           const parsedRecipe = JSON.parse(storedRecipe)
+          console.log('Loaded recipe from sessionStorage:', parsedRecipe)
+          console.log('Recipe imageUrl:', parsedRecipe.imageUrl)
           setRecipe(parsedRecipe)
           return
         } catch (error) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Image from 'next/image'
-import { ArrowLeft, Clock, Users, ChefHat, Sparkles, CheckCircle2, XCircle, Star, Heart, MessageSquare, Play, Pause, RotateCcw, RotateCw, CheckCircle, Circle, Timer, ShoppingCart, UtensilsCrossed, TrendingUp, TrendingDown, Wand2, Scissors, Flame, ChefHat as ChefIcon, Droplets, Zap, Layers, Bookmark, BookmarkCheck, Download, Loader2 } from 'lucide-react'
+import { ArrowLeft, Clock, Users, ChefHat, Sparkles, CheckCircle2, XCircle, Star, Heart, MessageSquare, Play, Pause, RotateCcw, RotateCw, CheckCircle, Circle, Timer, ShoppingCart, UtensilsCrossed, TrendingUp, TrendingDown, Wand2, Scissors, Flame, ChefHat as ChefIcon, Droplets, Zap, Layers, Bookmark, BookmarkCheck, Download, Loader2, Plus, Minus, X } from 'lucide-react'
 import { Recipe } from '@/data/recipes'
 import { motion, AnimatePresence } from 'framer-motion'
 import AIChat from './AIChat'
@@ -36,10 +36,25 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
   useEffect(() => {
     setCurrentRecipe(recipe)
   }, [recipe])
+
+  // Auto-start timer when entering cooking mode or changing steps if step has a time
+  useEffect(() => {
+    if (cookingMode && timerSeconds === null) {
+      const timeInSeconds = extractTimeFromStep(currentRecipe.instructions[currentStep].step)
+      if (timeInSeconds) {
+        setTimerSeconds(timeInSeconds)
+        setTimerActive(true)
+      }
+    }
+  }, [cookingMode, currentStep, currentRecipe.instructions])
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set())
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null)
   const [timerActive, setTimerActive] = useState(false)
   const [servingMultiplier, setServingMultiplier] = useState(1)
+  const [showTimerInput, setShowTimerInput] = useState(false)
+  const [customMinutes, setCustomMinutes] = useState(5)
+  const [showTimerPicker, setShowTimerPicker] = useState(false)
+  const [timerPickerStep, setTimerPickerStep] = useState<string | null>(null)
 
   const toggleStep = (stepIndex: number) => {
     const newCompleted = new Set(completedSteps)
@@ -61,7 +76,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
     setCheckedIngredients(newChecked)
   }
 
-  // Timer effect
+  // Timer effect with sound notification
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
     if (timerActive && timerSeconds !== null && timerSeconds > 0) {
@@ -69,6 +84,34 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         setTimerSeconds((prev) => {
           if (prev === null || prev <= 1) {
             setTimerActive(false)
+            // Play notification sound when timer completes (multiple beeps for attention)
+            if (typeof window !== 'undefined' && 'Audio' in window) {
+              try {
+                const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+                
+                // Play 3 beeps for better attention
+                for (let i = 0; i < 3; i++) {
+                  setTimeout(() => {
+                    const oscillator = audioContext.createOscillator()
+                    const gainNode = audioContext.createGain()
+                    
+                    oscillator.connect(gainNode)
+                    gainNode.connect(audioContext.destination)
+                    
+                    oscillator.frequency.value = 800 + (i * 100) // Slightly different pitch each time
+                    oscillator.type = 'sine'
+                    
+                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime)
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6)
+                    
+                    oscillator.start(audioContext.currentTime)
+                    oscillator.stop(audioContext.currentTime + 0.6)
+                  }, i * 200) // Stagger the beeps
+                }
+              } catch (e) {
+                console.log('Audio notification not available')
+              }
+            }
             return 0
           }
           return prev - 1
@@ -107,13 +150,91 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
     return null
   }
 
+  const extractTimeRangeFromStep = (step: string): { min: number; max: number } | null => {
+    // Look for time ranges like "5 to 10 minutes", "3-4 minutes", "2-3 min"
+    const rangePatterns = [
+      /(\d+)\s*(?:to|-)\s*(\d+)\s*(?:min|minutes|minute)/i,
+      /(\d+)-(\d+)\s*(?:min|minutes|minute)/i,
+    ]
+    
+    for (const pattern of rangePatterns) {
+      const match = step.match(pattern)
+      if (match && match[1] && match[2]) {
+        return {
+          min: parseInt(match[1]),
+          max: parseInt(match[2])
+        }
+      }
+    }
+    
+    // Check for single time
+    const singlePattern = /(\d+)\s*(?:min|minutes|minute)/i
+    const singleMatch = step.match(singlePattern)
+    if (singleMatch) {
+      const time = parseInt(singleMatch[1])
+      return { min: time, max: time }
+    }
+    
+    return null
+  }
+
+  const getTimerOptions = (step: string): number[] => {
+    const range = extractTimeRangeFromStep(step)
+    if (!range) return []
+    
+    // If it's a range, offer smart options
+    if (range.min !== range.max) {
+      const options: number[] = []
+      const diff = range.max - range.min
+      
+      // Always include min and max
+      options.push(range.min)
+      
+      // Add middle option if range is large enough
+      if (diff >= 3) {
+        const middle = Math.round((range.min + range.max) / 2)
+        if (middle !== range.min && middle !== range.max) {
+          options.push(middle)
+        }
+      }
+      
+      // Add max
+      options.push(range.max)
+      
+      return options
+    } else {
+      // Single time, just return it
+      return [range.min]
+    }
+  }
+
   const startTimerForStep = (step: string) => {
-    const timeInSeconds = extractTimeFromStep(step)
-    if (timeInSeconds) {
-      setTimerSeconds(timeInSeconds)
+    const options = getTimerOptions(step)
+    if (options.length > 1) {
+      // Show picker for ranges
+      setTimerPickerStep(step)
+      setShowTimerPicker(true)
+    } else if (options.length === 1) {
+      // Single time, start immediately
+      setTimerSeconds(options[0] * 60)
       setTimerActive(true)
     }
   }
+
+  const startTimerWithMinutes = (minutes: number) => {
+    setTimerSeconds(minutes * 60)
+    setTimerActive(true)
+    setShowTimerPicker(false)
+    setTimerPickerStep(null)
+  }
+
+  const startCustomTimer = (minutes: number) => {
+    setTimerSeconds(minutes * 60)
+    setTimerActive(true)
+    setShowTimerInput(false)
+  }
+
+  const presetTimers = [1, 5, 10, 15, 30]
 
   const adjustServings = (direction: 'up' | 'down') => {
     if (direction === 'up' && servingMultiplier < 4) {
@@ -504,7 +625,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
           <div className="flex items-center space-x-2">
             {/* Save/Unsave Button */}
             {(onSave || onUnsave) && (
-              <button
+          <button
                 onClick={async (e) => {
                   e.preventDefault()
                   e.stopPropagation()
@@ -560,9 +681,9 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Download PDF</span>
-            </button>
-          </div>
+          </button>
         </div>
+            </div>
 
         {/* Floating Magic Button in Cooking Mode */}
         {cookingMode && (
@@ -613,10 +734,10 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     {currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
                       <span className="text-xl sm:text-2xl ml-1">✨</span>
                     )}
-                  </div>
+              </div>
                 )}
                 <p className="text-[10px] sm:text-xs text-slate-300 mt-1 sm:mt-2 text-center">Ready to serve!</p>
-              </div>
+            </div>
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-100 mb-2 sm:mb-3">{currentRecipe.name}</h1>
@@ -696,7 +817,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   <div className="px-4 py-2 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-xl font-semibold flex items-center space-x-2">
                     <UtensilsCrossed className="w-5 h-5" />
                     <span>Cooking Mode Active</span>
-                  </div>
+            </div>
                   <button
                     onClick={() => {
                       setCookingMode(false)
@@ -906,54 +1027,152 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             </div>
           )}
 
-          {/* Timer Display */}
-          {cookingMode && timerSeconds !== null && (
-            <div className="mb-4 sm:mb-6 p-4 sm:p-6 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl sm:rounded-2xl text-white">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <Timer className="w-6 h-6 sm:w-8 sm:h-8" />
-                  <div>
-                    <p className="text-xs sm:text-sm opacity-90">Cooking Timer</p>
-                    <p className="text-3xl sm:text-4xl font-bold">{formatTime(timerSeconds)}</p>
+          {/* Enhanced Timer Widget - Always Available */}
+          <div className="mb-4 sm:mb-6">
+            {timerSeconds !== null ? (
+              // Active Timer Display
+              <div className="p-4 sm:p-6 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl sm:rounded-2xl text-white shadow-2xl">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <Timer className="w-6 h-6 sm:w-8 sm:h-8" />
+                    <div>
+                      <p className="text-xs sm:text-sm opacity-90">Cooking Timer</p>
+                      <p className={`text-3xl sm:text-4xl font-bold ${timerSeconds === 0 ? 'animate-pulse' : ''}`}>
+                        {formatTime(timerSeconds)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {timerActive ? (
+                      <button
+                        onClick={() => setTimerActive(false)}
+                        className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-lg sm:rounded-xl transition-colors"
+                        title="Pause timer"
+                      >
+                        <Pause className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => timerSeconds > 0 && setTimerActive(true)}
+                        className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-lg sm:rounded-xl transition-colors disabled:opacity-50"
+                        title="Resume timer"
+                        disabled={timerSeconds === 0}
+                      >
+                        <Play className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        const timeInSeconds = extractTimeFromStep(currentRecipe.instructions[currentStep].step)
+                        if (timeInSeconds) {
+                          setTimerSeconds(timeInSeconds)
+                          setTimerActive(false)
+                        } else {
+                          setTimerSeconds(customMinutes * 60)
+                          setTimerActive(false)
+                        }
+                      }}
+                      className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-lg sm:rounded-xl transition-colors"
+                      title="Reset timer"
+                    >
+                      <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTimerSeconds(null)
+                        setTimerActive(false)
+                      }}
+                      className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-lg sm:rounded-xl transition-colors"
+                      title="Close timer"
+                    >
+                      <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {timerActive ? (
+                {timerSeconds === 0 && (
+                  <div className="mt-3 sm:mt-4 p-3 bg-white/20 rounded-lg text-center animate-pulse">
+                    <p className="font-semibold text-base sm:text-lg">⏰ Time's up! Move to next step.</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Timer Controls - Preset Buttons and Custom Input
+              <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-800/50">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Timer className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
+                    <h3 className="text-lg sm:text-xl font-bold text-white">Quick Timer</h3>
+                  </div>
+                  {showTimerInput && (
                     <button
-                      onClick={() => setTimerActive(false)}
-                      className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-lg sm:rounded-xl transition-colors"
+                      onClick={() => setShowTimerInput(false)}
+                      className="text-slate-400 hover:text-slate-200 transition-colors"
                     >
-                      <Pause className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setTimerActive(true)}
-                      className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-lg sm:rounded-xl transition-colors"
-                    >
-                      <Play className="w-5 h-5 sm:w-6 sm:h-6" />
+                      <X className="w-5 h-5" />
                     </button>
                   )}
-                  <button
-                    onClick={() => {
-                      const timeInSeconds = extractTimeFromStep(currentRecipe.instructions[currentStep].step)
-                      if (timeInSeconds) {
-                        setTimerSeconds(timeInSeconds)
-                        setTimerActive(false)
-                      }
-                    }}
-                    className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-lg sm:rounded-xl transition-colors"
-                  >
-                    <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
                 </div>
+                
+                {!showTimerInput ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {presetTimers.map((minutes) => (
+                        <button
+                          key={minutes}
+                          onClick={() => startCustomTimer(minutes)}
+                          className="px-4 py-2 bg-slate-800/60 border border-slate-700/50 text-slate-200 rounded-lg font-semibold hover:border-primary-500/50 hover:bg-primary-500/10 transition-all"
+                        >
+                          {minutes} min
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setShowTimerInput(true)}
+                      className="w-full px-4 py-2 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-lg font-semibold hover:bg-primary-500/30 transition-all flex items-center justify-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Custom Timer</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => setCustomMinutes(Math.max(1, customMinutes - 1))}
+                        className="p-2 bg-slate-800/60 border border-slate-700/50 text-slate-200 rounded-lg hover:border-primary-500/50 transition-all"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <div className="flex-1 text-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max="120"
+                          value={customMinutes}
+                          onChange={(e) => setCustomMinutes(Math.max(1, Math.min(120, parseInt(e.target.value) || 1)))}
+                          className="w-full px-4 py-2 bg-slate-800/60 border border-slate-700/50 text-white rounded-lg text-center text-lg font-bold focus:outline-none focus:border-primary-500/50"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">minutes</p>
+                      </div>
+                      <button
+                        onClick={() => setCustomMinutes(Math.min(120, customMinutes + 1))}
+                        className="p-2 bg-slate-800/60 border border-slate-700/50 text-slate-200 rounded-lg hover:border-primary-500/50 transition-all"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => startCustomTimer(customMinutes)}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg font-semibold hover:from-primary-600 hover:to-primary-700 transition-all flex items-center justify-center space-x-2"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span>Start {customMinutes} Minute Timer</span>
+                    </button>
+                  </div>
+                )}
               </div>
-              {timerSeconds === 0 && (
-                <div className="mt-3 sm:mt-4 p-3 bg-white/20 rounded-lg text-center">
-                  <p className="font-semibold text-base sm:text-lg">⏰ Time's up! Move to next step.</p>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
           
           <div className="space-y-4">
             <AnimatePresence mode="wait">
@@ -1002,33 +1221,54 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                       {currentRecipe.instructions[currentStep].step}
                     </p>
                     
-                    {/* Show final result preview on last step */}
+                    {/* Show final result preview on last step - Enhanced with AI-generated image */}
                     {currentStep === currentRecipe.instructions.length - 1 && (
-                      <div className="mb-4 sm:mb-6 p-4 sm:p-6 bg-gradient-to-br from-primary-500/20 to-primary-600/20 rounded-xl border-2 border-primary-500/40">
-                        <p className="text-center text-xs sm:text-sm text-primary-300 mb-2 sm:mb-3 font-semibold uppercase tracking-wide">Final Result Preview</p>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="mb-4 sm:mb-6 p-4 sm:p-6 md:p-8 bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 rounded-xl sm:rounded-2xl border-2 border-primary-500/40 shadow-2xl"
+                      >
+                        <div className="text-center mb-4 sm:mb-6">
+                          <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-primary-300 mb-2 uppercase tracking-wide">
+                            🎉 Final Result Preview
+                          </h3>
+                          <p className="text-xs sm:text-sm text-slate-300">This is what your {currentRecipe.name} will look like when done!</p>
+                        </div>
                         {currentRecipe.imageUrl ? (
-                          <div className="w-full max-w-md mx-auto mb-2 sm:mb-3 relative aspect-video">
+                          <div className="w-full max-w-2xl mx-auto mb-4 relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 border-primary-500/30">
                             <Image 
                               src={currentRecipe.imageUrl} 
-                              alt={currentRecipe.name}
+                              alt={`Final result: ${currentRecipe.name}`}
                               fill
-                              className="object-cover rounded-xl shadow-2xl"
-                              sizes="(max-width: 768px) 100vw, 512px"
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, 800px"
+                              priority
                             />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-center space-x-3 sm:space-x-4">
-                            <div className="text-4xl sm:text-5xl md:text-6xl">{currentRecipe.emoji}</div>
-                            {currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
-                              <>
-                                <span className="text-2xl sm:text-3xl text-slate-400">+</span>
-                                <div className="text-3xl sm:text-4xl">✨</div>
-                              </>
-                            )}
+                          <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                            <div className="flex items-center justify-center space-x-4">
+                              <div className="text-6xl sm:text-7xl md:text-8xl">{currentRecipe.emoji}</div>
+                              {currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
+                                <>
+                                  <span className="text-4xl sm:text-5xl text-primary-400">+</span>
+                                  <div className="text-5xl sm:text-6xl animate-pulse">✨</div>
+                                </>
+                              )}
+                            </div>
+                            <p className="text-sm sm:text-base text-slate-400 italic">AI image generating...</p>
                           </div>
                         )}
-                        <p className="text-center text-xs sm:text-sm text-slate-300 mt-2 sm:mt-3 px-2">This is what your {currentRecipe.name} will look like when done!</p>
-                      </div>
+                        {currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
+                          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                            <p className="text-xs sm:text-sm text-slate-300 text-center">
+                              <span className="text-primary-400 font-semibold">💡 Presentation Tip:</span> {currentRecipe.presentationTips[0]}
+                            </p>
+                          </div>
+                        )}
+                      </motion.div>
                     )}
                     
                     {/* Visual Progress Bar */}
@@ -1299,6 +1539,75 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
           <span className="absolute -top-2 -right-2 w-3 h-3 bg-primary-400 rounded-full animate-ping"></span>
         </button>
       )}
+
+      {/* Smart Timer Picker Modal */}
+      <AnimatePresence>
+        {showTimerPicker && timerPickerStep && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => {
+              setShowTimerPicker(false)
+              setTimerPickerStep(null)
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-effect rounded-2xl sm:rounded-3xl border border-primary-500/30 p-6 sm:p-8 max-w-md w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-primary-500/20 rounded-xl">
+                    <Timer className="w-6 h-6 text-primary-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Choose Timer Duration</h3>
+                    <p className="text-sm text-slate-400">Select how long you want to wait</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowTimerPicker(false)
+                    setTimerPickerStep(null)
+                  }}
+                  className="text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {getTimerOptions(timerPickerStep).map((minutes) => (
+                  <button
+                    key={minutes}
+                    onClick={() => startTimerWithMinutes(minutes)}
+                    className="w-full px-6 py-4 bg-gradient-to-r from-primary-500/20 to-primary-600/20 border-2 border-primary-500/30 text-white rounded-xl font-semibold hover:border-primary-500/60 hover:from-primary-500/30 hover:to-primary-600/30 transition-all flex items-center justify-between group"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-primary-500/30 flex items-center justify-center group-hover:bg-primary-500/50 transition-colors">
+                        <Timer className="w-5 h-5 text-primary-300" />
+                      </div>
+                      <span className="text-lg">{minutes} {minutes === 1 ? 'minute' : 'minutes'}</span>
+                    </div>
+                    <Play className="w-5 h-5 text-primary-400 group-hover:text-primary-300 transition-colors" />
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-slate-700/50">
+                <p className="text-xs text-slate-400 text-center">
+                  💡 The timer will sound when it's done, so you know when to take your food out!
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

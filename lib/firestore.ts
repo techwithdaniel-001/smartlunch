@@ -30,8 +30,16 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
       updatedAt: new Date().toISOString(),
     }
     
-    // Use setDoc which works for both create and update
-    await setDoc(recipeRef, recipeData, { merge: true })
+    // Use explicit create or update based on document existence
+    // This ensures security rules are properly applied
+    if (docSnap.exists()) {
+      // Update existing document
+      await setDoc(recipeRef, recipeData, { merge: true })
+    } else {
+      // Create new document
+      await setDoc(recipeRef, recipeData)
+    }
+    
     return true
   } catch (error: any) {
     console.error('Error saving recipe to Firestore:', error)

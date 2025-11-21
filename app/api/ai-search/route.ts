@@ -50,15 +50,7 @@ Always return ONLY valid JSON in this exact format (no markdown, no code blocks,
   }
 }
 
-CRITICAL REQUIREMENTS FOR PARENTS:
-- Keep total time under 30 minutes (prep + cook)
-- Use simple, common ingredients found in most kitchens
-- Include specific times in instructions when cooking/heating (e.g., "cook for 3-4 minutes", "bake for 15-18 minutes")
-- Make instructions clear enough to follow while multitasking
-- Add practical tips that save time or make cooking easier
-- Keep difficulty at "Easy" or "Medium" - avoid complex techniques
-- Make it fun for kids but realistic for busy parents
-- Use ingredients that are easy to find and affordable
+Requirements: Under 30 min total, simple ingredients, clear instructions with timing, Easy/Medium difficulty, kid-friendly.
 ${availableIngredients && availableIngredients.length > 0 ? `- Prioritize using these available ingredients: ${availableIngredients.join(', ')}` : ''}
 ${userPreferences ? `
 USER PREFERENCES (IMPORTANT - USE THESE TO PERSONALIZE THE RECIPE):
@@ -101,8 +93,8 @@ Generate a recipe based on: "${query}"`
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Generate a recipe for: ${query}` },
         ],
-        temperature: 0.8,
-        max_tokens: 2000,
+        temperature: 0.7,
+        max_tokens: 1500,
         response_format: { type: 'json_object' },
       }),
     })
@@ -165,13 +157,17 @@ Generate a recipe based on: "${query}"`
       },
     }
 
-    // Generate image for the recipe
+    // Generate image for the recipe (this is important for the final preview)
+    // We'll wait for it since it's a key feature, but optimize the prompt for speed
     try {
       const mainIngredients = recipe.ingredients.slice(0, 5).map((i: any) => i.name).join(', ')
       const presentation = recipe.presentationTips && recipe.presentationTips.length > 0 
         ? recipe.presentationTips[0] 
-        : 'beautifully arranged'
-      const imagePrompt = `Professional high-quality food photography of ${recipe.name}, a real cooked and prepared dish. ${recipe.description}. The actual final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
+        : 'beautifully arranged on a plate'
+      const imagePrompt = `Professional food photography of ${recipe.name}, a delicious cooked and prepared dish. The final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
+      
+      console.log('Generating image for recipe:', recipe.name)
+      console.log('Image prompt:', imagePrompt)
       
       const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
@@ -188,19 +184,41 @@ Generate a recipe based on: "${query}"`
         }),
       })
 
-      if (imageResponse.ok) {
-        const imageData = await imageResponse.json()
-        if (imageData.data && imageData.data[0]?.url) {
-          recipe.imageUrl = imageData.data[0].url
-        }
+      if (!imageResponse.ok) {
+        const errorText = await imageResponse.text()
+        console.error('Image generation failed:', imageResponse.status, errorText)
+        throw new Error(`Image generation failed: ${imageResponse.status}`)
       }
-    } catch (imageError) {
+
+      const imageData = await imageResponse.json()
+      console.log('Image generation response:', imageData)
+      
+      if (imageData.data && imageData.data[0]?.url) {
+        recipe.imageUrl = imageData.data[0].url
+        console.log('Image URL set:', recipe.imageUrl)
+      } else {
+        console.error('No image URL in response:', imageData)
+      }
+    } catch (imageError: any) {
       console.error('Image generation error:', imageError)
-      // Continue without image if generation fails
+      console.error('Error details:', {
+        message: imageError?.message,
+        stack: imageError?.stack,
+        name: imageError?.name
+      })
+      // Continue without image if generation fails, but log it
+      recipe.imageUrl = undefined
     }
 
+    // Ensure imageUrl is included in the response
+    console.log('Returning recipe with imageUrl:', recipe.imageUrl ? 'YES' : 'NO')
+    console.log('Recipe object:', JSON.stringify({ ...recipe, imageUrl: recipe.imageUrl }))
+    
     return NextResponse.json({
-      recipe,
+      recipe: {
+        ...recipe,
+        imageUrl: recipe.imageUrl, // Explicitly include imageUrl
+      },
     })
   } catch (error: any) {
     console.error('AI Search Error:', error)
