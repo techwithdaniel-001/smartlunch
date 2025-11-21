@@ -3,17 +3,22 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Saved recipes collection
     match /savedRecipes/{recipeId} {
-      // Users can only read their own saved recipes
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Users can read their own saved recipes or check if documents exist
+      allow read: if request.auth != null && (
+        !resource.exists || 
+        resource.data.userId == request.auth.uid
+      );
       
       // Users can only create saved recipes for themselves
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
       
       // Users can only update their own saved recipes
-      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
       
       // Users can only delete their own saved recipes
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
     
     // User preferences collection
