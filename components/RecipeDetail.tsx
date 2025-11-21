@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ArrowLeft, Clock, Users, ChefHat, Sparkles, CheckCircle2, XCircle, Star, Heart, MessageSquare, Play, Pause, RotateCcw, RotateCw, CheckCircle, Circle, Timer, ShoppingCart, UtensilsCrossed, TrendingUp, TrendingDown, Wand2, Scissors, Flame, ChefHat as ChefIcon, Droplets, Zap, Layers, Bookmark, BookmarkCheck, Download } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import Image from 'next/image'
+import { ArrowLeft, Clock, Users, ChefHat, Sparkles, CheckCircle2, XCircle, Star, Heart, MessageSquare, Play, Pause, RotateCcw, RotateCw, CheckCircle, Circle, Timer, ShoppingCart, UtensilsCrossed, TrendingUp, TrendingDown, Wand2, Scissors, Flame, ChefHat as ChefIcon, Droplets, Zap, Layers, Bookmark, BookmarkCheck, Download, Loader2 } from 'lucide-react'
 import { Recipe } from '@/data/recipes'
 import { motion, AnimatePresence } from 'framer-motion'
 import AIChat from './AIChat'
@@ -24,11 +25,17 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
   const [currentRecipe, setCurrentRecipe] = useState<Recipe>(recipe)
   const [internalShowAIChat, setInternalShowAIChat] = useState(false)
+  const [saving, setSaving] = useState(false)
   
   // Use external state if provided, otherwise use internal state
   const showAIChat = externalShowAIChat !== undefined ? externalShowAIChat : internalShowAIChat
   const setShowAIChat = externalSetShowAIChat || setInternalShowAIChat
   const [cookingMode, setCookingMode] = useState(false)
+  
+  // Update currentRecipe when recipe prop changes
+  useEffect(() => {
+    setCurrentRecipe(recipe)
+  }, [recipe])
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set())
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null)
   const [timerActive, setTimerActive] = useState(false)
@@ -498,21 +505,41 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             {/* Save/Unsave Button */}
             {(onSave || onUnsave) && (
               <button
-                onClick={() => {
-                  if (isSaved && onUnsave) {
-                    onUnsave()
-                  } else if (!isSaved && onSave) {
-                    onSave()
+                onClick={async (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (saving) return
+                  
+                  setSaving(true)
+                  try {
+                    if (isSaved && onUnsave) {
+                      await onUnsave()
+                    } else if (!isSaved && onSave) {
+                      await onSave()
+                    }
+                    // Small delay to show success feedback
+                    await new Promise(resolve => setTimeout(resolve, 300))
+                  } catch (error: any) {
+                    console.error('Error in save button:', error)
+                    alert(`Failed to save recipe: ${error?.message || 'Unknown error'}. Please check the browser console for details.`)
+                  } finally {
+                    setSaving(false)
                   }
                 }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
+                disabled={saving}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                   isSaved
                     ? 'bg-primary-500/20 border border-primary-500/50 text-primary-300 hover:bg-primary-500/30'
-                    : 'bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50'
+                    : 'bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10'
                 }`}
                 title={isSaved ? 'Remove from saved' : 'Save recipe'}
               >
-                {isSaved ? (
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="hidden sm:inline">Saving...</span>
+                  </>
+                ) : isSaved ? (
                   <>
                     <BookmarkCheck className="w-4 h-4" />
                     <span className="hidden sm:inline">Saved</span>
@@ -555,10 +582,13 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             <div className="flex-shrink-0 flex flex-row sm:flex-col gap-3 sm:gap-4 items-center sm:items-start">
               <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-accent-500/20 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden border border-primary-500/20 relative">
                 {currentRecipe.imageUrl ? (
-                  <img 
+                  <Image 
                     src={currentRecipe.imageUrl} 
                     alt={currentRecipe.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    priority
+                    sizes="128px"
                   />
                 ) : (
                   <div className="text-4xl sm:text-5xl md:text-6xl">{currentRecipe.emoji}</div>
@@ -568,11 +598,13 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
               <div className="w-24 sm:w-28 md:w-32 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-lg sm:rounded-xl p-2 sm:p-3 border border-primary-500/30 overflow-hidden">
                 <p className="text-[10px] sm:text-xs text-slate-400 mb-1 sm:mb-2 text-center font-medium">Final Result</p>
                 {currentRecipe.imageUrl ? (
-                  <div className="w-full aspect-square rounded-lg overflow-hidden mb-1 sm:mb-2">
-                    <img 
+                  <div className="w-full aspect-square rounded-lg overflow-hidden mb-1 sm:mb-2 relative">
+                    <Image 
                       src={currentRecipe.imageUrl} 
                       alt={currentRecipe.name}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="128px"
                     />
                   </div>
                 ) : (
@@ -975,11 +1007,13 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                       <div className="mb-4 sm:mb-6 p-4 sm:p-6 bg-gradient-to-br from-primary-500/20 to-primary-600/20 rounded-xl border-2 border-primary-500/40">
                         <p className="text-center text-xs sm:text-sm text-primary-300 mb-2 sm:mb-3 font-semibold uppercase tracking-wide">Final Result Preview</p>
                         {currentRecipe.imageUrl ? (
-                          <div className="w-full max-w-md mx-auto mb-2 sm:mb-3">
-                            <img 
+                          <div className="w-full max-w-md mx-auto mb-2 sm:mb-3 relative aspect-video">
+                            <Image 
                               src={currentRecipe.imageUrl} 
                               alt={currentRecipe.name}
-                              className="w-full h-auto rounded-xl shadow-2xl"
+                              fill
+                              className="object-cover rounded-xl shadow-2xl"
+                              sizes="(max-width: 768px) 100vw, 512px"
                             />
                           </div>
                         ) : (
@@ -1154,11 +1188,13 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             <div className="mt-4 sm:mt-6 p-4 sm:p-6 md:p-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl sm:rounded-2xl text-white text-center premium-glow">
               <div className="mb-3 sm:mb-4">
                 {currentRecipe.imageUrl ? (
-                  <div className="w-full max-w-md mx-auto mb-3 sm:mb-4">
-                    <img 
+                  <div className="w-full max-w-md mx-auto mb-3 sm:mb-4 relative aspect-video">
+                    <Image 
                       src={currentRecipe.imageUrl} 
                       alt={currentRecipe.name}
-                      className="w-full h-auto rounded-xl shadow-2xl border-2 sm:border-4 border-white/20"
+                      fill
+                      className="object-cover rounded-xl shadow-2xl border-2 sm:border-4 border-white/20"
+                      sizes="(max-width: 768px) 100vw, 512px"
                     />
                   </div>
                 ) : (

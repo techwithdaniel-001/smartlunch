@@ -17,16 +17,36 @@ const SAVED_RECIPES_COLLECTION = 'savedRecipes'
 export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
   try {
     const recipeRef = doc(db, SAVED_RECIPES_COLLECTION, `${userId}_${recipe.id}`)
-    await setDoc(recipeRef, {
+    
+    // Check if document exists to determine if it's create or update
+    const docSnap = await getDoc(recipeRef)
+    const existingData = docSnap.exists() ? docSnap.data() : null
+    
+    const recipeData = {
       userId,
       recipeId: recipe.id,
       recipe: recipe,
-      savedAt: new Date().toISOString(),
-    })
+      savedAt: existingData?.savedAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    
+    // Use setDoc which works for both create and update
+    await setDoc(recipeRef, recipeData, { merge: true })
     return true
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving recipe to Firestore:', error)
-    throw error
+    console.error('Error code:', error?.code)
+    console.error('Error message:', error?.message)
+    
+    // Provide more specific error messages
+    if (error?.code === 'permission-denied') {
+      throw new Error('Permission denied. Please check Firestore security rules are deployed.')
+    }
+    if (error?.code === 'unavailable' || error?.code === 'deadline-exceeded' || error?.code === 'failed-precondition') {
+      throw new Error('Firestore is temporarily unavailable. Please check your internet connection and try again.')
+    }
+    // Re-throw with original error message for better debugging
+    throw new Error(error?.message || 'Failed to save recipe. Please check the console for details.')
   }
 }
 
@@ -35,9 +55,20 @@ export async function removeRecipeFromFirestore(userId: string, recipeId: string
     const recipeRef = doc(db, SAVED_RECIPES_COLLECTION, `${userId}_${recipeId}`)
     await deleteDoc(recipeRef)
     return true
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error removing recipe from Firestore:', error)
-    throw error
+    console.error('Error code:', error?.code)
+    console.error('Error message:', error?.message)
+    
+    // Provide more specific error messages
+    if (error?.code === 'permission-denied') {
+      throw new Error('Permission denied. Please check Firestore security rules are deployed.')
+    }
+    if (error?.code === 'unavailable' || error?.code === 'deadline-exceeded' || error?.code === 'failed-precondition') {
+      throw new Error('Firestore is temporarily unavailable. Please check your internet connection and try again.')
+    }
+    // Re-throw with original error message for better debugging
+    throw new Error(error?.message || 'Failed to remove recipe. Please check the console for details.')
   }
 }
 
@@ -48,27 +79,37 @@ export async function getUserSavedRecipes(userId: string): Promise<Recipe[]> {
       where('userId', '==', userId)
     )
     const querySnapshot = await getDocs(q)
-    const recipes: Recipe[] = []
+    
+    // Create array with recipe and savedAt together for efficient sorting
+    const recipesWithMetadata: Array<{ recipe: Recipe; savedAt: string }> = []
     
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       if (data.recipe) {
-        recipes.push(data.recipe as Recipe)
+        recipesWithMetadata.push({
+          recipe: data.recipe as Recipe,
+          savedAt: data.savedAt || ''
+        })
       }
     })
     
-    // Sort by savedAt (most recent first)
-    recipes.sort((a, b) => {
-      const aData = querySnapshot.docs.find(d => d.data().recipe?.id === a.id)
-      const bData = querySnapshot.docs.find(d => d.data().recipe?.id === b.id)
-      const aTime = aData?.data().savedAt || ''
-      const bTime = bData?.data().savedAt || ''
-      return bTime.localeCompare(aTime)
-    })
+    // Sort by savedAt (most recent first) - O(n log n) instead of O(n²)
+    recipesWithMetadata.sort((a, b) => b.savedAt.localeCompare(a.savedAt))
     
-    return recipes
-  } catch (error) {
+    // Extract just the recipes
+    return recipesWithMetadata.map(item => item.recipe)
+  } catch (error: any) {
     console.error('Error fetching saved recipes from Firestore:', error)
+    console.error('Error code:', error?.code)
+    console.error('Error message:', error?.message)
+    
+    // Provide more specific error messages
+    if (error?.code === 'permission-denied') {
+      throw new Error('Permission denied. Please check Firestore security rules are deployed.')
+    }
+    if (error?.code === 'unavailable' || error?.code === 'deadline-exceeded' || error?.code === 'failed-precondition') {
+      throw new Error('Firestore is temporarily unavailable. Please check your internet connection and try again.')
+    }
     throw error
   }
 }
@@ -114,6 +155,7 @@ export interface UserPreferences {
   hasPartner: boolean
   kidsAges?: string[]
   preferences?: string[]
+  kitchenEquipment?: string[]
 }
 
 const USER_PREFERENCES_COLLECTION = 'userPreferences'

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
 import { Mail, Lock, User, LogIn, UserPlus, Loader2 } from 'lucide-react'
 
@@ -48,8 +49,14 @@ export default function Auth() {
         <div className="glass-effect rounded-2xl p-8 border-slate-800/80">
           {/* Logo/Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 rounded-2xl mb-4 premium-glow">
-              <User className="w-8 h-8 text-white" />
+            <div className="inline-flex items-center justify-center w-20 h-20 mb-4 relative">
+              <Image
+                src="/assets/smartlunchlogo.png"
+                alt="Smart Lunch Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Smart Lunch</h1>
             <p className="text-slate-400">

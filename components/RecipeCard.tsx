@@ -1,5 +1,7 @@
 'use client'
 
+import { memo, useMemo } from 'react'
+import Image from 'next/image'
 import { Clock, Users, Star, CheckCircle2, Bookmark, BookmarkCheck } from 'lucide-react'
 import { Recipe } from '@/data/recipes'
 
@@ -12,17 +14,18 @@ interface RecipeCardProps {
   onUnsave?: () => void
 }
 
-export default function RecipeCard({ recipe, onClick, availableIngredients, isSaved, onSave, onUnsave }: RecipeCardProps) {
-  const matchPercentage = availableIngredients.length > 0
-    ? Math.round(
-        (recipe.ingredients.filter(ri =>
-          availableIngredients.some(ai =>
-            ri.name.toLowerCase().includes(ai.toLowerCase()) ||
-            ai.toLowerCase().includes(ri.name.toLowerCase())
-          )
-        ).length / recipe.ingredients.length) * 100
-      )
-    : 100
+function RecipeCard({ recipe, onClick, availableIngredients, isSaved, onSave, onUnsave }: RecipeCardProps) {
+  const matchPercentage = useMemo(() => {
+    if (availableIngredients.length === 0) return 100
+    return Math.round(
+      (recipe.ingredients.filter(ri =>
+        availableIngredients.some(ai =>
+          ri.name.toLowerCase().includes(ai.toLowerCase()) ||
+          ai.toLowerCase().includes(ri.name.toLowerCase())
+        )
+      ).length / recipe.ingredients.length) * 100
+    )
+  }, [recipe.ingredients, availableIngredients])
 
   return (
     <div
@@ -33,10 +36,13 @@ export default function RecipeCard({ recipe, onClick, availableIngredients, isSa
         <div className="aspect-video bg-gradient-to-br from-slate-900/80 via-slate-800/70 to-slate-900/80 rounded-xl flex items-center justify-center overflow-hidden border border-slate-700/30 group-hover:border-primary-500/40 transition-all duration-300 relative">
           {recipe.imageUrl ? (
             <>
-              <img 
+              <Image 
                 src={recipe.imageUrl} 
                 alt={recipe.name}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                loading="lazy"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-primary-500/0 via-primary-500/5 to-primary-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.2)_100%)]"></div>
@@ -63,21 +69,26 @@ export default function RecipeCard({ recipe, onClick, availableIngredients, isSa
         {/* Save Button */}
         {(onSave || onUnsave) && (
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation()
-              if (isSaved && onUnsave) {
-                onUnsave()
-              } else if (!isSaved && onSave) {
-                onSave()
+              e.preventDefault()
+              try {
+                if (isSaved && onUnsave) {
+                  await onUnsave()
+                } else if (!isSaved && onSave) {
+                  await onSave()
+                }
+              } catch (error) {
+                console.error('Error in save button:', error)
               }
             }}
-            className="absolute bottom-3 right-3 bg-slate-900/90 backdrop-blur-sm p-2 rounded-full border border-primary-500/30 hover:border-primary-500/60 transition-all hover:scale-110 z-10"
+            className="absolute bottom-3 right-3 bg-slate-900/90 backdrop-blur-sm p-2 rounded-full border border-primary-500/30 hover:border-primary-500/60 transition-all hover:scale-110 z-10 active:scale-95"
             title={isSaved ? 'Remove from saved' : 'Save recipe'}
           >
             {isSaved ? (
               <BookmarkCheck className="w-4 h-4 text-primary-400" />
             ) : (
-              <Bookmark className="w-4 h-4 text-slate-400" />
+              <Bookmark className="w-4 h-4 text-slate-400 hover:text-primary-400" />
             )}
           </button>
         )}
@@ -123,4 +134,6 @@ export default function RecipeCard({ recipe, onClick, availableIngredients, isSa
     </div>
   )
 }
+
+export default memo(RecipeCard)
 

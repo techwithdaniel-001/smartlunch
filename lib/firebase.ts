@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
-import { getAuth, Auth } from 'firebase/auth'
+import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore, Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -22,7 +22,39 @@ if (getApps().length === 0) {
 
 // Initialize Firebase services
 export const auth: Auth = getAuth(app)
-export const db: Firestore = getFirestore(app)
+
+// Initialize Firestore with better error handling
+let db: Firestore
+try {
+  db = getFirestore(app)
+  
+  // Enable offline persistence (optional, helps with connectivity issues)
+  if (typeof window !== 'undefined') {
+    import('firebase/firestore').then((firestoreModule) => {
+      firestoreModule.enableIndexedDbPersistence(db).catch((err: any) => {
+        if (err.code === 'failed-precondition') {
+          // Multiple tabs open, persistence can only be enabled in one tab at a time
+          console.warn('Firestore persistence already enabled in another tab')
+        } else if (err.code === 'unimplemented') {
+          // Browser doesn't support persistence
+          console.warn('Firestore persistence not supported in this browser')
+        }
+      })
+    })
+  }
+} catch (error) {
+  console.error('Error initializing Firestore:', error)
+  throw error
+}
+
+export { db }
+
+// Set authentication persistence to local (persists across browser sessions)
+if (typeof window !== 'undefined') {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error('Error setting auth persistence:', error)
+  })
+}
 
 // Initialize Analytics (only on client side, optional)
 let analytics: any = null

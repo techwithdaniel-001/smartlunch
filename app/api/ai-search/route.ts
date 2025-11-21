@@ -66,6 +66,23 @@ USER PREFERENCES (IMPORTANT - USE THESE TO PERSONALIZE THE RECIPE):
 ${userPreferences.hasKids ? `- Has kids (ages: ${userPreferences.kidsAges?.join(', ') || 'not specified'})` : ''}
 ${userPreferences.hasPartner ? '- Has a partner' : ''}
 ${userPreferences.dietaryRestrictions && userPreferences.dietaryRestrictions.length > 0 ? `- Dietary restrictions: ${userPreferences.dietaryRestrictions.join(', ')} - MUST respect these restrictions!` : ''}
+${userPreferences.kitchenEquipment && userPreferences.kitchenEquipment.length > 0 ? `- Available kitchen equipment: ${userPreferences.kitchenEquipment.map((e: string) => {
+  const equipmentMap: { [key: string]: string } = {
+    'oven': 'Oven',
+    'stovetop': 'Stovetop',
+    'microwave': 'Microwave',
+    'toaster': 'Toaster',
+    'air_fryer': 'Air Fryer',
+    'slow_cooker': 'Slow Cooker',
+    'instant_pot': 'Instant Pot',
+    'blender': 'Blender',
+    'food_processor': 'Food Processor',
+    'grill': 'Grill',
+    'rice_cooker': 'Rice Cooker',
+    'steamer': 'Steamer'
+  }
+  return equipmentMap[e] || e
+}).join(', ')} - ONLY suggest recipes that can be made with these tools! If a recipe requires equipment they don't have, suggest an alternative method or skip that recipe.` : '- No specific kitchen equipment specified - assume basic stovetop and microwave available'}
 - Adjust serving size to match ${userPreferences.numberOfPeople} people
 - Make it appropriate for ${userPreferences.hasKids ? 'kids and adults' : 'adults'}
 ` : ''}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Save, LogOut, Users, Baby, Heart, AlertCircle } from 'lucide-react'
+import { X, Save, LogOut, Users, Baby, Heart, AlertCircle, ChefHat } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getUserPreferences, saveUserPreferences, UserPreferences } from '@/lib/firestore'
 
@@ -23,6 +23,21 @@ const DIETARY_OPTIONS = [
   'Paleo'
 ]
 
+const KITCHEN_EQUIPMENT = [
+  { id: 'oven', label: 'Oven', description: 'For baking and roasting' },
+  { id: 'stovetop', label: 'Stovetop', description: 'Gas or electric burner' },
+  { id: 'microwave', label: 'Microwave', description: 'Quick heating' },
+  { id: 'toaster', label: 'Toaster', description: 'For toasting bread' },
+  { id: 'air_fryer', label: 'Air Fryer', description: 'Healthier frying option' },
+  { id: 'slow_cooker', label: 'Slow Cooker', description: 'Crockpot for slow cooking' },
+  { id: 'instant_pot', label: 'Instant Pot', description: 'Pressure cooker' },
+  { id: 'blender', label: 'Blender', description: 'For smoothies and purees' },
+  { id: 'food_processor', label: 'Food Processor', description: 'For chopping and mixing' },
+  { id: 'grill', label: 'Grill', description: 'Outdoor or indoor grill' },
+  { id: 'rice_cooker', label: 'Rice Cooker', description: 'For perfect rice' },
+  { id: 'steamer', label: 'Steamer', description: 'For steaming vegetables' },
+]
+
 export default function ProfileSettings({ onClose, onPreferencesUpdated }: ProfileSettingsProps) {
   const { user, signOut } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -33,7 +48,8 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
     hasKids: false,
     hasPartner: false,
     kidsAges: [],
-    preferences: []
+    preferences: [],
+    kitchenEquipment: []
   })
 
   useEffect(() => {
@@ -47,7 +63,10 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
     try {
       const saved = await getUserPreferences(user.uid)
       if (saved) {
-        setPreferences(saved)
+        setPreferences({
+          ...saved,
+          kitchenEquipment: saved.kitchenEquipment || []
+        })
       }
     } catch (error) {
       console.error('Error loading preferences:', error)
@@ -81,6 +100,15 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
       dietaryRestrictions: prev.dietaryRestrictions.includes(restriction)
         ? prev.dietaryRestrictions.filter(r => r !== restriction)
         : [...prev.dietaryRestrictions, restriction]
+    }))
+  }
+
+  const toggleKitchenEquipment = (equipment: string) => {
+    setPreferences(prev => ({
+      ...prev,
+      kitchenEquipment: prev.kitchenEquipment?.includes(equipment)
+        ? prev.kitchenEquipment.filter(e => e !== equipment)
+        : [...(prev.kitchenEquipment || []), equipment]
     }))
   }
 
@@ -214,6 +242,41 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
                     className="w-4 h-4 text-primary-500 bg-slate-800 border-slate-700 rounded focus:ring-primary-500"
                   />
                   <span className="text-sm text-slate-300">{option}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Kitchen Equipment */}
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+              <ChefHat className="w-5 h-5 text-primary-400" />
+              <span>Kitchen Equipment</span>
+            </h3>
+            <p className="text-sm text-slate-400 mb-4">
+              Select the cooking equipment you have available. This helps us suggest recipes you can actually make!
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {KITCHEN_EQUIPMENT.map((equipment) => (
+                <label
+                  key={equipment.id}
+                  className={`flex items-start space-x-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                    preferences.kitchenEquipment?.includes(equipment.id)
+                      ? 'bg-primary-500/20 border-primary-500/50'
+                      : 'bg-slate-800/60 border-slate-700/50 hover:border-primary-500/30'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={preferences.kitchenEquipment?.includes(equipment.id) || false}
+                    onChange={() => toggleKitchenEquipment(equipment.id)}
+                    className="w-4 h-4 mt-0.5 text-primary-500 bg-slate-800 border-slate-700 rounded focus:ring-primary-500"
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-slate-200 block">{equipment.label}</span>
+                    <span className="text-xs text-slate-400">{equipment.description}</span>
+                  </div>
                 </label>
               ))}
             </div>
