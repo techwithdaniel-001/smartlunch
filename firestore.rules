@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Saved recipes collection
+    match /savedRecipes/{recipeId} {
+      // Users can only read their own saved recipes
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      
+      // Users can only create saved recipes for themselves
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      
+      // Users can only update their own saved recipes
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      
+      // Users can only delete their own saved recipes
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    
+    // User preferences collection
+    match /userPreferences/{userId} {
+      // Users can only read their own preferences
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can only create/update their own preferences
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
