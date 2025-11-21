@@ -11,8 +11,9 @@ service cloud.firestore {
       
       // Users can create saved recipes for themselves
       allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId &&
-        request.resource.data.recipeId != null;
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.recipeId != null &&
+        request.resource.data.recipe != null;
       
       // Users can update their own saved recipes (must maintain userId)
       allow update: if request.auth != null && 

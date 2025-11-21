@@ -22,7 +22,9 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Hi! I'm your Smart Lunch AI assistant. 🍽️\n\nI can help you:\n• Modify this recipe (e.g., 'change turkey to chicken')\n• Generate new recipes\n• Answer cooking questions\n\nI'll keep it brief - just tell me what you'd like to change!",
+      content: currentRecipe 
+        ? `Hi! I can help you modify this recipe! 🍽️\n\nTry saying:\n• "Make it vegan"\n• "Change chicken to turkey"\n• "Make it gluten-free"\n• "Add more vegetables"\n• "Make it spicier"\n\nThe recipe will update automatically!`
+        : "Hi! I'm your Smart Lunch AI assistant. 🍽️\n\nI can help you:\n• Generate new recipes\n• Modify recipes\n• Answer cooking questions\n\nJust tell me what you'd like!",
     },
   ])
   const [input, setInput] = useState('')

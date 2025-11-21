@@ -3,6 +3,7 @@ import {
   doc, 
   getDoc, 
   setDoc, 
+  updateDoc,
   deleteDoc, 
   query, 
   where, 
@@ -33,10 +34,10 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
     // Use explicit create or update based on document existence
     // This ensures security rules are properly applied
     if (docSnap.exists()) {
-      // Update existing document
-      await setDoc(recipeRef, recipeData, { merge: true })
+      // Update existing document - use updateDoc for explicit update operation
+      await updateDoc(recipeRef, recipeData)
     } else {
-      // Create new document
+      // Create new document - use setDoc for explicit create operation
       await setDoc(recipeRef, recipeData)
     }
     
@@ -45,6 +46,8 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
     console.error('Error saving recipe to Firestore:', error)
     console.error('Error code:', error?.code)
     console.error('Error message:', error?.message)
+    console.error('User ID:', userId)
+    console.error('Recipe ID:', recipe.id)
     
     // Provide more specific error messages
     if (error?.code === 'permission-denied') {

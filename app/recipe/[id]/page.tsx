@@ -234,13 +234,26 @@ export default function RecipePage() {
       onBack={() => router.push('/dashboard')}
       availableIngredients={selectedIngredients}
       onRecipeUpdated={async (updatedRecipe) => {
+        // Update the recipe state immediately
         setRecipe(updatedRecipe)
+        
+        // Update sessionStorage if it's an AI-generated recipe
+        if (typeof window !== 'undefined') {
+          const storedRecipe = sessionStorage.getItem(`recipe-${updatedRecipe.id}`)
+          if (storedRecipe) {
+            sessionStorage.setItem(`recipe-${updatedRecipe.id}`, JSON.stringify(updatedRecipe))
+            console.log('Updated recipe in sessionStorage:', updatedRecipe.id)
+          }
+        }
+        
+        // If the recipe is saved in Firestore, update it there too
         if (user && isRecipeSaved(updatedRecipe.id)) {
           try {
             await updateSavedRecipe(user.uid, updatedRecipe)
             setSavedRecipes((prev) =>
               prev.map((r) => (r.id === updatedRecipe.id ? updatedRecipe : r))
             )
+            console.log('Updated saved recipe in Firestore:', updatedRecipe.id)
           } catch (error) {
             console.error('Error updating saved recipe:', error)
           }
