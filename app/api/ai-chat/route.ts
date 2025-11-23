@@ -3,7 +3,7 @@ import { Recipe } from '@/data/recipes'
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, currentRecipe, availableIngredients, userPreferences } = await request.json()
+    const { messages, currentRecipe, availableIngredients, userPreferences, removedIngredients } = await request.json()
 
     // Check if OpenAI API key is set
     const apiKey = process.env.OPENAI_API_KEY
@@ -34,6 +34,8 @@ CRITICAL: BE CONCISE AND BRIEF!
 - The recipe will automatically update on the right side, so you don't need to show it in chat
 - Only provide detailed explanations when the user explicitly asks for help or clarification
 - Keep responses short and to the point - busy parents don't have time for long messages
+- NEVER repeat the same response twice - if you already answered a question, just acknowledge briefly or provide a different angle
+- If the user asks about alternatives for removed ingredients, provide ONE clear, concise response with specific options
 
 Your role:
 - Generate creative, kid-friendly lunch recipes that are EASY for busy parents to make
@@ -44,11 +46,21 @@ Your role:
 When modifying recipes:
 - ALWAYS return the COMPLETE updated recipe in JSON format - never return partial recipes
 - Make the change requested (e.g., "turkey to chicken" = replace turkey with chicken)
+- For step modifications (e.g., "break step 2 into two steps", "make step 3 more detailed"):
+  * You can split, combine, or modify individual steps
+  * Update the instructions array accordingly
+  * Maintain the logical flow of the recipe
+  * Keep step numbering sequential
 - For dietary changes (vegan, vegetarian, gluten-free, etc.), replace ALL non-compliant ingredients:
-  * Vegan: Replace all animal products (meat, dairy, eggs, honey) with plant-based alternatives
-  * Vegetarian: Replace all meat with plant-based proteins
-  * Gluten-free: Replace wheat/gluten ingredients with gluten-free alternatives
-  * Dairy-free: Replace all dairy with non-dairy alternatives
+  * Vegan: Replace all animal products (meat, dairy, eggs, honey) with REAL plant-based alternatives
+  * Vegetarian: Replace all meat with REAL plant-based proteins (tofu, tempeh, legumes, etc.)
+  * Gluten-free: Replace wheat/gluten ingredients with REAL gluten-free alternatives (rice, quinoa, gluten-free pasta, etc.)
+  * Dairy-free: Replace all dairy with REAL non-dairy alternatives (almond milk, coconut milk, vegan cheese, etc.)
+- CRITICAL: DO NOT HALLUCINATE INGREDIENTS! Only use real, existing ingredients:
+  * DO NOT invent ingredients like "lactose-free fettuccine" (fettuccine is pasta, not dairy)
+  * DO NOT create fake product names
+  * Use actual alternatives: for dairy-free pasta, use regular pasta (pasta doesn't contain dairy) or specify "dairy-free sauce"
+  * Research real alternatives before suggesting them
 - Update instructions to reflect ingredient changes
 - Adjust cooking times/methods if needed for substitutions
 - Keep all other aspects the same unless specifically asked to change them
@@ -66,7 +78,7 @@ When generating recipes, always return them in this JSON format:
   "tags": ["tag1", "tag2"],
   "ingredients": [{"name": "Ingredient", "amount": "1 cup"}],
   "instructions": [
-    {"step": "Clear instruction with timing if needed (e.g., 'cook for 3-4 minutes')", "tip": "Helpful tip for busy parents"}
+    {"step": "VERY DETAILED step-by-step instruction. Break down every action. Instead of 'add vegetables', say 'First, chop 1 onion into small pieces. Then add the chopped onion to the pan.' Be extremely specific about what to do first, second, third. Include exact ingredient names, amounts, and order. Make it so clear a teenager with no cooking experience can follow it.", "tip": "Helpful tip for busy parents"}
   ],
   "presentationTips": ["Quick tip 1", "Quick tip 2"],
   "nutrition": {"calories": "250", "protein": "10g", "carbs": "30g", "fat": "8g"}
@@ -80,17 +92,50 @@ When modifying this recipe:
 - Preserve the recipe structure (name, description, emoji, time, servings, difficulty, rating, tags)
 - Update ingredients list completely - replace all non-compliant items
 - Update instructions to reflect new ingredients and cooking methods
+- CRITICAL: Keep ALL instructions EXTREMELY detailed and beginner-friendly:
+  * Break down every action into tiny steps
+  * Specify EXACTLY which ingredient to add first, second, third
+  * Include specific amounts in each step
+  * Never use generic terms like "add vegetables" - say "add 1 chopped onion, then add 1 cup of tomatoes"
+  * Make it so clear a teenager with no cooking experience can follow it
+- For step modifications (e.g., "break step 2 into two steps", "make step 3 more detailed", "split step 1"):
+  * You can split a single step into multiple steps
+  * You can combine multiple steps into one
+  * You can reorder steps if needed
+  * Maintain logical flow and cooking sequence
+  * Update step numbering to be sequential (0, 1, 2, 3...)
+  * Each step should be EXTREMELY detailed and actionable
 - Keep presentation tips relevant to the modified recipe
 - Adjust nutrition info if significant changes are made
 - ALWAYS return the complete recipe with ALL fields filled in
 ` : ''}
 ${availableIngredients.length > 0 ? `Available ingredients: ${availableIngredients.join(', ')}` : ''}
+${removedIngredients && removedIngredients.length > 0 ? `
+REMOVED INGREDIENTS (USER DOESN'T HAVE THESE):
+- ${removedIngredients.join(', ')}
+- IMPORTANT: When user asks about alternatives or modifications, provide:
+  * Specific substitute ingredients they can use
+  * Alternative recipes or variations without these ingredients
+  * Questions to understand what they have available
+  * Multiple options so they can choose what works best
+- Be helpful and provide practical, realistic alternatives
+` : ''}
 ${userPreferences ? `
 USER PREFERENCES (IMPORTANT - USE THESE TO PERSONALIZE RECIPES):
 - Number of people: ${userPreferences.numberOfPeople}
 ${userPreferences.hasKids ? `- Has kids (ages: ${userPreferences.kidsAges?.join(', ') || 'not specified'})` : ''}
 ${userPreferences.hasPartner ? '- Has a partner' : ''}
 ${userPreferences.dietaryRestrictions && userPreferences.dietaryRestrictions.length > 0 ? `- Dietary restrictions: ${userPreferences.dietaryRestrictions.join(', ')} - MUST respect these restrictions!` : ''}
+${userPreferences.allergies && userPreferences.allergies.length > 0 ? `- ALLERGIES (CRITICAL - NEVER USE THESE): ${userPreferences.allergies.join(', ')} - ABSOLUTELY DO NOT include any of these ingredients or cross-contaminated items!` : ''}
+${userPreferences.healthGoals && userPreferences.healthGoals.length > 0 ? `- HEALTH GOALS (CRITICAL - TAILOR RECIPES TO THESE): ${userPreferences.healthGoals.join(', ')}
+  * If "Eat more vegetables": Include plenty of vegetables, make them the star of the dish
+  * If "Increase protein intake": Prioritize protein-rich ingredients (chicken, beans, eggs, tofu, etc.)
+  * If "More balanced meals": Ensure good balance of protein, carbs, and healthy fats
+  * If "Weight management": Focus on nutrient-dense, lower-calorie options
+  * If "Build healthy habits": Emphasize whole foods, minimal processed ingredients
+  * If "Energy boost": Include energizing ingredients, balanced macros
+  * If "Better nutrition for kids": Make it fun, colorful, and packed with nutrients kids need
+  * Adjust ingredients and portions to support these goals!` : ''}
 ${userPreferences.kitchenEquipment && userPreferences.kitchenEquipment.length > 0 ? `- Available kitchen equipment: ${userPreferences.kitchenEquipment.map((e: string) => {
   const equipmentMap: { [key: string]: string } = {
     'oven': 'Oven',
@@ -112,9 +157,21 @@ ${userPreferences.kitchenEquipment && userPreferences.kitchenEquipment.length > 
 - Make recipes appropriate for ${userPreferences.hasKids ? 'kids and adults' : 'adults'}
 ` : ''}
 
+CRITICAL INSTRUCTION REQUIREMENTS - WRITE STEPS FOR BEGINNERS:
+- Break down EVERY step into tiny, specific actions
+- NEVER say generic things like "add vegetables" or "add mixed ingredients"
+- ALWAYS specify EXACTLY which ingredient first, then which next
+- Example BAD: "Add vegetables and spices to the pan"
+- Example GOOD: "First, add 1 chopped onion to the pan. Cook for 2 minutes until soft. Then add 1 teaspoon of garlic powder. Stir. Then add 1 cup of chopped tomatoes. Cook for 3 more minutes."
+- List ingredients in the EXACT order they should be added
+- Include specific amounts for each ingredient in each step
+- Tell them what to look for (e.g., "cook until onions are soft and see-through")
+- Make it so detailed that someone who has NEVER cooked before can follow it
+- Think: "How would I teach a teenager to cook this step-by-step?"
+
 Focus on making recipes that are:
 1. Quick to prepare (15-25 minutes max)
-2. Easy to follow (clear steps, no complex techniques)
+2. EXTREMELY detailed step-by-step instructions (beginner-friendly, like teaching a teenager)
 3. Kid-approved (fun shapes, colors, flavors)
 4. Parent-friendly (minimal cleanup, can multitask)
 5. Realistic for busy families (common ingredients, simple tools)`

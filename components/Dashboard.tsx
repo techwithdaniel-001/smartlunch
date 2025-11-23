@@ -11,6 +11,7 @@ import RecipeCard from './RecipeCard'
 import RecipeSearch from './RecipeSearch'
 import RecipeLoading from './RecipeLoading'
 import { Recipe } from '@/data/recipes'
+import { playRecipeCompleteSound } from '@/lib/sounds'
 
 interface DashboardProps {
   onRecipeClick: (recipe: Recipe) => void
@@ -90,6 +91,8 @@ export default function Dashboard({
           ...data.recipe,
           imageUrl: data.recipe.imageUrl,
         }
+        // Play success sound when recipe is generated
+        playRecipeCompleteSound()
         onRecipeGenerated(recipeWithImage)
         onRecipeClick(recipeWithImage)
       }
@@ -158,7 +161,7 @@ export default function Dashboard({
         {/* Personalized Greeting & AI Input */}
         <div className="mb-8 sm:mb-12">
           <div className="mb-6 sm:mb-8 text-center sm:text-left">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 leading-tight">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium text-white mb-3 leading-tight">
               Hey {getUserName}! 👋
             </h2>
             <p className="text-slate-200 text-lg sm:text-xl font-medium">
@@ -182,7 +185,7 @@ export default function Dashboard({
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">AI Recipe Generator</h3>
+                  <h3 className="text-lg sm:text-xl font-medium text-white">AI Recipe Generator</h3>
                 </div>
               </div>
 
@@ -250,7 +253,7 @@ export default function Dashboard({
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center space-x-3 mb-4">
             <div className="h-1 w-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full"></div>
-            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-medium text-white">
               Saved Recipes ({savedRecipes.length})
             </h3>
           </div>
@@ -268,7 +271,7 @@ export default function Dashboard({
                 <div className="absolute inset-0 bg-primary-500/20 rounded-full blur-2xl"></div>
                 <BookmarkCheck className="w-16 h-16 text-primary-400 relative z-10" />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">No saved recipes yet</h3>
+              <h3 className="text-lg font-medium text-white mb-2">No saved recipes yet</h3>
               <p className="text-slate-200 mb-6">Save recipes by clicking the bookmark icon</p>
               <button
                 onClick={() => setShowRecipeSearch(true)}

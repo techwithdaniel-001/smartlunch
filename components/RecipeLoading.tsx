@@ -63,7 +63,7 @@ export default function RecipeLoading() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: step.delay, duration: 0.5 }}
-              className="flex items-center space-x-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50"
+              className="flex items-center justify-center space-x-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50"
             >
               <motion.div
                 animate={{
@@ -80,9 +80,9 @@ export default function RecipeLoading() {
               >
                 <step.icon className="w-5 h-5 text-primary-400" />
               </motion.div>
-              <span className="text-slate-300 text-sm sm:text-base">{step.text}</span>
+              <span className="text-slate-300 text-sm sm:text-base text-center">{step.text}</span>
               <motion.div
-                className="ml-auto flex space-x-1"
+                className="flex space-x-1"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: step.delay + 0.3 }}

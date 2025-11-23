@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Sparkles, X, Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { Recipe } from '@/data/recipes'
+import { playRecipeCompleteSound } from '@/lib/sounds'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -16,9 +18,11 @@ interface AIChatProps {
   availableIngredients?: string[]
   userPreferences?: any
   onClose?: () => void
+  removedIngredients?: string[]
+  autoSendMessage?: string | null
 }
 
-export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngredients = [], userPreferences, onClose }: AIChatProps) {
+export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngredients = [], userPreferences, onClose, removedIngredients = [], autoSendMessage }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -30,6 +34,7 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const lastAutoMessageRef = useRef<string | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -39,64 +44,107 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
     scrollToBottom()
   }, [messages])
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return
+  // Handle auto-send message when ingredient is removed
+  useEffect(() => {
+    if (autoSendMessage && autoSendMessage !== lastAutoMessageRef.current && !isLoading) {
+      lastAutoMessageRef.current = autoSendMessage
+      setInput(autoSendMessage)
+      
+      // Trigger send after a brief delay to ensure state is updated
+      const timer = setTimeout(() => {
+        sendMessageProgrammatically(autoSendMessage)
+      }, 100)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [autoSendMessage, isLoading])
+
+  const sendMessageProgrammatically = async (messageText: string) => {
+    if (!messageText.trim() || isLoading) return
 
     const userMessage: Message = {
       role: 'user',
-      content: input.trim(),
+      content: messageText.trim(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
-    setInput('')
-    setIsLoading(true)
+    setMessages((prev) => {
+      // Check if this exact message was just sent to prevent duplicates
+      const lastUserMessage = prev[prev.length - 1]
+      if (lastUserMessage?.role === 'user' && lastUserMessage.content === messageText.trim()) {
+        // Don't send duplicate message
+        return prev
+      }
 
-    try {
-      const response = await fetch('/api/ai-chat', {
+      const updatedMessages = [...prev, userMessage]
+      setInput('')
+      setIsLoading(true)
+
+      // Send the message asynchronously
+      fetch('/api/ai-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(m => ({
+          messages: updatedMessages.map(m => ({
             role: m.role,
             content: m.content,
           })),
           currentRecipe,
           availableIngredients,
           userPreferences: userPreferences,
+          removedIngredients: removedIngredients,
         }),
       })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            throw new Error(data.error)
+          }
 
-      const data = await response.json()
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: data.message,
+            recipe: data.recipe,
+          }
 
-      if (data.error) {
-        throw new Error(data.error)
-      }
+          setMessages((prevMessages) => {
+            // Check if the last message is the same to prevent duplicates
+            const lastMessage = prevMessages[prevMessages.length - 1]
+            if (lastMessage?.role === 'assistant' && lastMessage.content === assistantMessage.content && !assistantMessage.recipe) {
+              // Don't add duplicate assistant message unless it has a recipe
+              return prevMessages
+            }
+            return [...prevMessages, assistantMessage]
+          })
 
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.message,
-        recipe: data.recipe,
-      }
+          if (data.recipe && onRecipeGenerated) {
+            // Play success sound when recipe is generated
+            playRecipeCompleteSound()
+            onRecipeGenerated(data.recipe)
+          }
+        })
+        .catch(error => {
+          console.error('Error sending message:', error)
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              role: 'assistant',
+              content: 'Sorry, I encountered an error. Please make sure you have set up your OpenAI API key in the environment variables. Check the README for instructions.',
+            },
+          ])
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
 
-      setMessages((prev) => [...prev, assistantMessage])
+      return updatedMessages
+    })
+  }
 
-      if (data.recipe && onRecipeGenerated) {
-        onRecipeGenerated(data.recipe)
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please make sure you have set up your OpenAI API key in the environment variables. Check the README for instructions.',
-        },
-      ])
-    } finally {
-      setIsLoading(false)
-    }
+  const sendMessage = async () => {
+    if (!input.trim() || isLoading) return
+    await sendMessageProgrammatically(input.trim())
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -132,7 +180,7 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
             }`}
           >
             <div
-              className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+              className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
                 message.role === 'user'
                   ? 'bg-primary-500 text-white'
                   : 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
@@ -141,7 +189,14 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
               {message.role === 'user' ? (
                 <User className="w-5 h-5" />
               ) : (
-                <Bot className="w-5 h-5" />
+                <div className="w-full h-full relative rounded-full overflow-hidden">
+                  <Image
+                    src="/assets/smartlunchlogo.png"
+                    alt="Smart Lunch"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
               )}
             </div>
             <div
@@ -164,8 +219,15 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
         ))}
         {isLoading && (
           <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center">
-              <Bot className="w-5 h-5" />
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center overflow-hidden">
+              <div className="w-full h-full relative rounded-full overflow-hidden">
+                <Image
+                  src="/assets/smartlunchlogo.png"
+                  alt="Smart Lunch"
+                  fill
+                  className="object-cover"
+                />
+              </div>
             </div>
             <div className="flex-1 rounded-xl p-4 bg-slate-800/60 border border-slate-700/50">
               <Loader2 className="w-5 h-5 animate-spin text-primary-400" />

@@ -34,8 +34,7 @@ Always return ONLY valid JSON in this exact format (no markdown, no code blocks,
     {"name": "Another Ingredient", "amount": "2 tbsp"}
   ],
   "instructions": [
-    {"step": "Clear step with timing if needed (e.g., 'cook for 3-4 minutes')", "tip": "Practical tip for busy parents"},
-    {"step": "Next step", "tip": "Another helpful tip"}
+    {"step": "VERY DETAILED step-by-step instruction. Break down every action. Instead of 'add vegetables', say 'First, chop 1 onion into small pieces. Then add the chopped onion to the pan.' Be extremely specific about what to do first, second, third. Include exact ingredient names, amounts, and order. Make it so clear a teenager with no cooking experience can follow it.", "tip": "Practical tip for busy parents"}
   ],
   "presentationTips": [
     "Quick presentation idea 1",
@@ -50,7 +49,19 @@ Always return ONLY valid JSON in this exact format (no markdown, no code blocks,
   }
 }
 
-Requirements: Under 30 min total, simple ingredients, clear instructions with timing, Easy/Medium difficulty, kid-friendly.
+CRITICAL INSTRUCTION REQUIREMENTS - WRITE STEPS FOR BEGINNERS:
+- Break down EVERY step into tiny, specific actions
+- NEVER say generic things like "add vegetables" or "add mixed ingredients"
+- ALWAYS specify EXACTLY which ingredient first, then which next
+- Example BAD: "Add vegetables and spices to the pan"
+- Example GOOD: "First, add 1 chopped onion to the pan. Cook for 2 minutes until soft. Then add 1 teaspoon of garlic powder. Stir. Then add 1 cup of chopped tomatoes. Cook for 3 more minutes."
+- List ingredients in the EXACT order they should be added
+- Include specific amounts for each ingredient in each step
+- Tell them what to look for (e.g., "cook until onions are soft and see-through")
+- Make it so detailed that someone who has NEVER cooked before can follow it
+- Think: "How would I teach a teenager to cook this step-by-step?"
+
+Requirements: Under 30 min total, simple ingredients, EXTREMELY detailed step-by-step instructions, Easy difficulty, kid-friendly.
 ${availableIngredients && availableIngredients.length > 0 ? `- Prioritize using these available ingredients: ${availableIngredients.join(', ')}` : ''}
 ${userPreferences ? `
 USER PREFERENCES (IMPORTANT - USE THESE TO PERSONALIZE THE RECIPE):
@@ -58,6 +69,15 @@ USER PREFERENCES (IMPORTANT - USE THESE TO PERSONALIZE THE RECIPE):
 ${userPreferences.hasKids ? `- Has kids (ages: ${userPreferences.kidsAges?.join(', ') || 'not specified'})` : ''}
 ${userPreferences.hasPartner ? '- Has a partner' : ''}
 ${userPreferences.dietaryRestrictions && userPreferences.dietaryRestrictions.length > 0 ? `- Dietary restrictions: ${userPreferences.dietaryRestrictions.join(', ')} - MUST respect these restrictions!` : ''}
+${userPreferences.healthGoals && userPreferences.healthGoals.length > 0 ? `- HEALTH GOALS (CRITICAL - TAILOR RECIPES TO THESE): ${userPreferences.healthGoals.join(', ')}
+  * If "Eat more vegetables": Include plenty of vegetables, make them the star of the dish
+  * If "Increase protein intake": Prioritize protein-rich ingredients (chicken, beans, eggs, tofu, etc.)
+  * If "More balanced meals": Ensure good balance of protein, carbs, and healthy fats
+  * If "Weight management": Focus on nutrient-dense, lower-calorie options
+  * If "Build healthy habits": Emphasize whole foods, minimal processed ingredients
+  * If "Energy boost": Include energizing ingredients, balanced macros
+  * If "Better nutrition for kids": Make it fun, colorful, and packed with nutrients kids need
+  * Adjust ingredients and portions to support these goals!` : ''}
 ${userPreferences.kitchenEquipment && userPreferences.kitchenEquipment.length > 0 ? `- Available kitchen equipment: ${userPreferences.kitchenEquipment.map((e: string) => {
   const equipmentMap: { [key: string]: string } = {
     'oven': 'Oven',

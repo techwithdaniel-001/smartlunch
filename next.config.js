@@ -11,6 +11,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'oaidalleapiprodscus.blob.core.windows.net',
       },
+      {
+        protocol: 'https',
+        hostname: '**.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60,

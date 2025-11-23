@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import Image from 'next/image'
-import { ArrowLeft, Clock, Users, ChefHat, Sparkles, CheckCircle2, XCircle, Star, Heart, MessageSquare, Play, Pause, RotateCcw, RotateCw, CheckCircle, Circle, Timer, ShoppingCart, UtensilsCrossed, TrendingUp, TrendingDown, Wand2, Scissors, Flame, ChefHat as ChefIcon, Droplets, Zap, Layers, Bookmark, BookmarkCheck, Download, Loader2, Plus, Minus, X } from 'lucide-react'
+import { ArrowLeft, Clock, Users, ChefHat, Sparkles, CheckCircle2, XCircle, Star, Heart, MessageSquare, Play, Pause, RotateCcw, RotateCw, CheckCircle, Circle, Timer, ShoppingCart, UtensilsCrossed, Wand2, Scissors, Flame, ChefHat as ChefIcon, Droplets, Zap, Layers, Bookmark, BookmarkCheck, Download, Loader2, Plus, Minus, X, Send } from 'lucide-react'
 import { Recipe } from '@/data/recipes'
 import { motion, AnimatePresence } from 'framer-motion'
 import AIChat from './AIChat'
@@ -37,24 +37,18 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
     setCurrentRecipe(recipe)
   }, [recipe])
 
-  // Auto-start timer when entering cooking mode or changing steps if step has a time
-  useEffect(() => {
-    if (cookingMode && timerSeconds === null) {
-      const timeInSeconds = extractTimeFromStep(currentRecipe.instructions[currentStep].step)
-      if (timeInSeconds) {
-        setTimerSeconds(timeInSeconds)
-        setTimerActive(true)
-      }
-    }
-  }, [cookingMode, currentStep, currentRecipe.instructions])
+  // Don't auto-start timer - user will click start button when ready
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set())
+  const [removedIngredients, setRemovedIngredients] = useState<Set<number>>(new Set())
+  const [autoSendMessage, setAutoSendMessage] = useState<string | null>(null)
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null)
   const [timerActive, setTimerActive] = useState(false)
   const [servingMultiplier, setServingMultiplier] = useState(1)
-  const [showTimerInput, setShowTimerInput] = useState(false)
-  const [customMinutes, setCustomMinutes] = useState(5)
   const [showTimerPicker, setShowTimerPicker] = useState(false)
   const [timerPickerStep, setTimerPickerStep] = useState<string | null>(null)
+  const [showAIHelpPopup, setShowAIHelpPopup] = useState(false)
+  const [hasSeenAIHelp, setHasSeenAIHelp] = useState(false)
+  const cookingStepsRef = useRef<HTMLDivElement>(null)
 
   const toggleStep = (stepIndex: number) => {
     const newCompleted = new Set(completedSteps)
@@ -74,6 +68,27 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
       newChecked.add(index)
     }
     setCheckedIngredients(newChecked)
+  }
+
+  const removeIngredient = async (index: number, ingredientName: string) => {
+    // Add to removed ingredients
+    const newRemoved = new Set(removedIngredients)
+    newRemoved.add(index)
+    setRemovedIngredients(newRemoved)
+    
+    // Open AI chat if not already open
+    if (!showAIChat) {
+      setShowAIChat(true)
+    }
+    
+    // Auto-send message to AI asking for alternatives
+    const message = `I don't have ${ingredientName}. What can I use instead or how can I modify this recipe? Please provide alternatives and suggestions.`
+    setAutoSendMessage(message)
+    
+    // Clear the message after a brief delay to allow it to be sent
+    setTimeout(() => {
+      setAutoSendMessage(null)
+    }, 1000)
   }
 
   // Timer effect with sound notification
@@ -231,7 +246,6 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
   const startCustomTimer = (minutes: number) => {
     setTimerSeconds(minutes * 60)
     setTimerActive(true)
-    setShowTimerInput(false)
   }
 
   const presetTimers = [1, 5, 10, 15, 30]
@@ -473,6 +487,13 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
 
   const handleRecipeUpdated = (updatedRecipe: Recipe) => {
     setCurrentRecipe(updatedRecipe)
+    // Exit cooking mode when recipe is updated so user can start fresh
+    setCookingMode(false)
+    setCurrentStep(0)
+    setCompletedSteps(new Set())
+    setCheckedIngredients(new Set())
+    setTimerActive(false)
+    setTimerSeconds(null)
     if (onRecipeUpdated) {
       onRecipeUpdated(updatedRecipe)
     }
@@ -616,8 +637,12 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <button
-            onClick={onBack}
-            className="flex items-center space-x-2 text-slate-400 hover:text-slate-200 transition-colors"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onBack()
+            }}
+            className="flex items-center space-x-2 text-slate-400 hover:text-slate-200 transition-colors z-10 relative"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">Back to recipes</span>
@@ -648,7 +673,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   }
                 }}
                 disabled={saving}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                   isSaved
                     ? 'bg-primary-500/20 border border-primary-500/50 text-primary-300 hover:bg-primary-500/30'
                     : 'bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10'
@@ -676,7 +701,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             {/* Download PDF Button */}
             <button
               onClick={downloadPDF}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all duration-300"
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl font-medium bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all duration-300"
               title="Download recipe as PDF"
             >
               <Download className="w-4 h-4" />
@@ -700,7 +725,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         {/* Recipe Header */}
         <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 border-slate-800/80">
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-            <div className="flex-shrink-0 flex flex-row sm:flex-col gap-3 sm:gap-4 items-center sm:items-start">
+            <div className="flex-shrink-0">
               <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-accent-500/20 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden border border-primary-500/20 relative">
                 {currentRecipe.imageUrl ? (
                   <Image 
@@ -715,32 +740,9 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   <div className="text-4xl sm:text-5xl md:text-6xl">{currentRecipe.emoji}</div>
                 )}
               </div>
-              {/* Final Dish Preview */}
-              <div className="w-24 sm:w-28 md:w-32 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-lg sm:rounded-xl p-2 sm:p-3 border border-primary-500/30 overflow-hidden">
-                <p className="text-[10px] sm:text-xs text-slate-400 mb-1 sm:mb-2 text-center font-medium">Final Result</p>
-                {currentRecipe.imageUrl ? (
-                  <div className="w-full aspect-square rounded-lg overflow-hidden mb-1 sm:mb-2 relative">
-                    <Image 
-                      src={currentRecipe.imageUrl} 
-                      alt={currentRecipe.name}
-                      fill
-                      className="object-cover"
-                      sizes="128px"
-                    />
-                  </div>
-                ) : (
-                  <div className="text-3xl sm:text-4xl text-center leading-none">
-                {currentRecipe.emoji}
-                    {currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
-                      <span className="text-xl sm:text-2xl ml-1">✨</span>
-                    )}
-              </div>
-                )}
-                <p className="text-[10px] sm:text-xs text-slate-300 mt-1 sm:mt-2 text-center">Ready to serve!</p>
-            </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-100 mb-2 sm:mb-3">{currentRecipe.name}</h1>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-medium text-slate-100 mb-2 sm:mb-3">{currentRecipe.name}</h1>
               <p className="text-base sm:text-lg text-slate-300 mb-3 sm:mb-4">{currentRecipe.description}</p>
               
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4">
@@ -756,32 +758,12 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                       : currentRecipe.servings
                     }
                   </span>
-                  {!cookingMode && (
-                    <div className="flex items-center space-x-1 ml-2">
-                      <button
-                        onClick={() => adjustServings('down')}
-                        disabled={servingMultiplier <= 0.5}
-                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-30 text-slate-400 hover:text-slate-200"
-                        title="Decrease servings"
-                      >
-                        <TrendingDown className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => adjustServings('up')}
-                        disabled={servingMultiplier >= 4}
-                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-30 text-slate-400 hover:text-slate-200"
-                        title="Increase servings"
-                      >
-                        <TrendingUp className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Star className="w-5 h-5 fill-primary-400 text-primary-400" />
-                  <span className="font-semibold text-slate-200">{currentRecipe.rating}</span>
+                  <span className="font-medium text-slate-200">{currentRecipe.rating}</span>
                 </div>
-                <div className="px-3 py-1 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-full text-sm font-semibold">
+                <div className="px-3 py-1 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-full text-sm font-medium">
                   {currentRecipe.difficulty}
                 </div>
               </div>
@@ -804,27 +786,48 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     setCurrentStep(0)
                     setCompletedSteps(new Set())
                     setCheckedIngredients(new Set())
+                    // Scroll to cooking steps after a brief delay to ensure DOM is updated
+                    setTimeout(() => {
+                      cookingStepsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      // Show AI help popup on first time entering cooking mode
+                      if (!hasSeenAIHelp) {
+                        setTimeout(() => {
+                          setShowAIHelpPopup(true)
+                          setHasSeenAIHelp(true)
+                        }, 500)
+                      }
+                    }, 100)
                   }}
                   className="btn-primary flex items-center space-x-2 text-lg px-8 py-4"
                 >
                   <UtensilsCrossed className="w-6 h-6" />
-                  <span>Start Cooking Mode</span>
+                  <span>Start Cooking</span>
                 </button>
               )}
 
               {cookingMode && (
-                <div className="flex items-center space-x-4">
-                  <div className="px-4 py-2 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-xl font-semibold flex items-center space-x-2">
+                <div className="flex items-center space-x-4 flex-wrap gap-3">
+                  <div className="px-4 py-2 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-xl font-medium flex items-center space-x-2">
                     <UtensilsCrossed className="w-5 h-5" />
                     <span>Cooking Mode Active</span>
             </div>
+                  {!showAIChat && (
+                    <button
+                      onClick={() => setShowAIHelpPopup(true)}
+                      className="px-4 py-2 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-xl font-medium hover:bg-primary-500/30 transition-colors flex items-center space-x-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span className="hidden sm:inline">Need Help?</span>
+                      <span className="sm:hidden">Help</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setCookingMode(false)
                       setTimerActive(false)
                       setTimerSeconds(null)
                     }}
-                    className="px-4 py-2 border-2 border-slate-700 text-slate-300 rounded-xl font-semibold hover:bg-slate-800/60 transition-colors"
+                    className="px-4 py-2 border-2 border-slate-700 text-slate-300 rounded-xl font-medium hover:bg-slate-800/60 transition-colors"
                   >
                     Exit Cooking Mode
                   </button>
@@ -836,13 +839,16 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
 
         {/* Ingredients */}
         <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 border-slate-800/80">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-100 mb-3 sm:mb-4 flex items-center space-x-2">
+          <h2 className="text-xl sm:text-2xl font-medium text-slate-100 mb-3 sm:mb-4 flex items-center space-x-2">
             {cookingMode ? (
               <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
             ) : (
               <ChefHat className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
             )}
-            <span className="text-base sm:text-xl md:text-2xl">Ingredients {cookingMode && <span className="hidden sm:inline">(Check off as you gather)</span>}</span>
+            <span className="text-base sm:text-xl md:text-2xl font-medium">
+              {cookingMode ? 'Get Your Ingredients' : 'Ingredients Needed'}
+              {cookingMode && <span className="hidden sm:inline text-sm text-slate-400 ml-2 font-normal">(Check off as you gather)</span>}
+            </span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             {currentRecipe.ingredients.map((ingredient, index) => {
@@ -876,15 +882,45 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     </button>
                   ) : hasIt ? (
                     <CheckCircle2 className="w-5 h-5 text-primary-400 flex-shrink-0" />
+                  ) : removedIngredients.has(index) ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const newRemoved = new Set(removedIngredients)
+                        newRemoved.delete(index)
+                        setRemovedIngredients(newRemoved)
+                      }}
+                      className="flex-shrink-0 hover:scale-110 transition-transform"
+                      title="Restore ingredient"
+                    >
+                      <XCircle className="w-5 h-5 text-red-400" />
+                    </button>
                   ) : (
-                    <XCircle className="w-5 h-5 text-slate-500 flex-shrink-0" />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeIngredient(index, ingredient.name)
+                      }}
+                      className="flex-shrink-0 hover:scale-110 transition-transform"
+                      title="Remove ingredient - Get alternatives"
+                    >
+                      <XCircle className="w-5 h-5 text-slate-500 hover:text-red-400 transition-colors" />
+                    </button>
                   )}
                   <div className="flex-1">
-                    <span className={`font-medium text-lg ${isChecked ? 'line-through text-slate-500' : hasIt ? 'text-slate-100' : 'text-slate-400'}`}>
+                    <span className={`font-medium text-lg ${
+                      isChecked 
+                        ? 'line-through text-slate-500' 
+                        : removedIngredients.has(index)
+                        ? 'line-through text-red-400/60'
+                        : hasIt 
+                        ? 'text-slate-100' 
+                        : 'text-slate-400'
+                    }`}>
                       {ingredient.name}
                     </span>
                     {ingredient.amount && (
-                      <span className={`text-slate-400 ml-2 text-base ${cookingMode ? 'font-semibold' : ''}`}>
+                      <span className={`text-slate-400 ml-2 text-base ${cookingMode ? 'font-medium' : ''}`}>
                         • {servingMultiplier !== 1 ? calculateAdjustedAmount(ingredient.amount) : ingredient.amount}
                       </span>
                     )}
@@ -911,52 +947,69 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         {/* Quick Prep Info for Parents */}
         {!cookingMode && (
           <div className="glass-effect rounded-2xl p-6 mb-8 bg-gradient-to-br from-primary-500/10 via-primary-600/10 to-primary-700/10 border-primary-500/20">
-            <h2 className="text-2xl font-bold text-slate-100 mb-4 flex items-center space-x-2">
+            <h2 className="text-2xl font-medium text-slate-100 mb-4 flex items-center space-x-2">
               <Clock className="w-6 h-6 text-primary-400" />
               <span>Quick Prep Guide for Busy Parents</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
                 <p className="text-sm text-slate-400 mb-1">Total Time</p>
-                <p className="text-2xl font-bold text-slate-100">{currentRecipe.time}</p>
-              </div>
+                <p className="text-2xl font-medium text-slate-100">{currentRecipe.time}</p>
+                  </div>
               <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
                 <p className="text-sm text-slate-400 mb-1">Difficulty</p>
-                <p className="text-2xl font-bold text-slate-100">{currentRecipe.difficulty}</p>
-              </div>
+                <p className="text-2xl font-medium text-slate-100">{currentRecipe.difficulty}</p>
+                </div>
               <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
                 <p className="text-sm text-slate-400 mb-1">Servings</p>
-                <p className="text-2xl font-bold text-slate-100">{currentRecipe.servings}</p>
+                <p className="text-2xl font-medium text-slate-100">{currentRecipe.servings}</p>
               </div>
             </div>
             <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
-              <p className="text-sm font-semibold text-slate-100 mb-2">💡 Parent Tips:</p>
+              <p className="text-sm font-medium text-slate-100 mb-2">💡 Parent Tips:</p>
               <ul className="space-y-1 text-sm text-slate-300">
                 <li>• Gather all ingredients first to save time</li>
                 <li>• Most steps can be done while multitasking</li>
                 <li>• Use cooking mode for step-by-step guidance</li>
                 <li>• Adjust servings using the +/- buttons above</li>
               </ul>
-            </div>
-          </div>
-        )}
-
-        {/* Presentation Tips */}
-        {currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
-          <div className="glass-effect rounded-2xl p-6 mb-8 bg-gradient-to-br from-primary-500/10 via-accent-500/10 to-primary-600/10 border-primary-500/20">
-            <h2 className="text-2xl font-bold text-slate-100 mb-4 flex items-center space-x-2">
-              <Sparkles className="w-6 h-6 text-primary-400" />
-              <span>Make It Look Amazing! (Quick & Easy)</span>
-            </h2>
-            <div className="space-y-3">
-              {currentRecipe.presentationTips.map((tip, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <div className="w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold">
-                    {index + 1}
-                  </div>
-                  <p className="text-slate-300 flex-1">{tip}</p>
+              {/* Presentation Tips - Added under Parent Tips */}
+              {!cookingMode && currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-700/50">
+                  <p className="text-sm font-medium text-slate-100 mb-2">✨ Make It Look Amazing:</p>
+                  <ul className="space-y-1 text-sm text-slate-300">
+                    {currentRecipe.presentationTips.map((tip, index) => (
+                      <li key={index}>• {tip}</li>
+                    ))}
+                  </ul>
                 </div>
-              ))}
+              )}
+            </div>
+            {/* Start Cooking Button after Quick Prep Guide */}
+            <div className="mt-6">
+              <button
+                onClick={() => {
+                  setCookingMode(true)
+                  setCurrentStep(0)
+                  setCompletedSteps(new Set())
+                  setCheckedIngredients(new Set())
+                  // Scroll to cooking steps after a brief delay to ensure DOM is updated
+                  setTimeout(() => {
+                    cookingStepsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    // Show AI help popup on first time entering cooking mode
+                    if (!hasSeenAIHelp) {
+                      setTimeout(() => {
+                        setShowAIHelpPopup(true)
+                        setHasSeenAIHelp(true)
+                      }, 500)
+                    }
+                  }, 100)
+                }}
+                className="btn-primary flex items-center justify-center space-x-2 text-lg px-8 py-4 w-full"
+              >
+                <UtensilsCrossed className="w-6 h-6" />
+                <span>Start Cooking</span>
+              </button>
             </div>
           </div>
         )}
@@ -964,7 +1017,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         {/* Instructions */}
         <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 border-slate-800/80">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center space-x-2">
+            <h2 className="text-xl sm:text-2xl font-medium text-slate-100 flex items-center space-x-2">
               <ChefHat className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
             <span>Step-by-Step Instructions</span>
           </h2>
@@ -994,17 +1047,16 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
           {/* Visual Step Flow Overview */}
           {!cookingMode && (
             <div className="mb-6 p-4 bg-slate-800/40 rounded-xl border border-slate-700/50">
-              <p className="text-sm text-slate-300 mb-3 font-medium">Recipe Flow:</p>
-              <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+              <p className="text-sm text-slate-300 mb-3 font-medium text-center">Recipe Flow:</p>
+              <div className="flex items-center justify-center space-x-2 sm:space-x-3 overflow-x-auto pb-2">
                 {currentRecipe.instructions.map((instruction, index) => {
-                  const step = instruction.step.toLowerCase()
                   const isCompleted = completedSteps.has(index)
                   const isCurrent = currentStep === index
                   return (
                     <button
                       key={index}
                       onClick={() => setCurrentStep(index)}
-                      className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                      className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all font-medium text-sm sm:text-base ${
                         isCompleted
                           ? 'bg-primary-500 text-white'
                           : isCurrent
@@ -1014,11 +1066,9 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                       title={instruction.step.substring(0, 50) + '...'}
                     >
                       {isCompleted ? (
-                        <CheckCircle className="w-5 h-5" />
+                        <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                       ) : (
-                        <div className="w-5 h-5">
-                          {getStepIcon(instruction.step)}
-                        </div>
+                        <span>{index + 1}</span>
                       )}
                     </button>
                   )
@@ -1037,7 +1087,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     <Timer className="w-6 h-6 sm:w-8 sm:h-8" />
                     <div>
                       <p className="text-xs sm:text-sm opacity-90">Cooking Timer</p>
-                      <p className={`text-3xl sm:text-4xl font-bold ${timerSeconds === 0 ? 'animate-pulse' : ''}`}>
+                      <p className={`text-3xl sm:text-4xl font-medium ${timerSeconds === 0 ? 'animate-pulse' : ''}`}>
                         {formatTime(timerSeconds)}
                       </p>
                     </div>
@@ -1068,7 +1118,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                           setTimerSeconds(timeInSeconds)
                           setTimerActive(false)
                         } else {
-                          setTimerSeconds(customMinutes * 60)
+                          setTimerSeconds(5 * 60) // Default to 5 minutes if no time found
                           setTimerActive(false)
                         }
                       }}
@@ -1091,90 +1141,69 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                 </div>
                 {timerSeconds === 0 && (
                   <div className="mt-3 sm:mt-4 p-3 bg-white/20 rounded-lg text-center animate-pulse">
-                    <p className="font-semibold text-base sm:text-lg">⏰ Time's up! Move to next step.</p>
+                    <p className="font-medium text-base sm:text-lg">⏰ Time's up! Move to next step.</p>
                   </div>
                 )}
               </div>
             ) : (
-              // Timer Controls - Preset Buttons and Custom Input
-              <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-800/50">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
+              // No Timer - Show Start Timer Button if step has time, otherwise show Quick Timer Options
+              cookingMode && extractTimeFromStep(currentRecipe.instructions[currentStep].step) ? (
+                <div className="p-4 sm:p-6 bg-slate-800/60 border border-slate-700/50 rounded-xl sm:rounded-2xl text-center">
+                  <div className="flex items-center justify-center space-x-2 mb-4">
                     <Timer className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
-                    <h3 className="text-lg sm:text-xl font-bold text-white">Quick Timer</h3>
+                    <h3 className="text-lg sm:text-xl font-medium text-white">Ready to Start?</h3>
                   </div>
-                  {showTimerInput && (
-                    <button
-                      onClick={() => setShowTimerInput(false)}
-                      className="text-slate-400 hover:text-slate-200 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
+                  <p className="text-sm text-slate-300 mb-4">This step has a timer. Click start when you're ready!</p>
+                  <button
+                    onClick={() => startTimerForStep(currentRecipe.instructions[currentStep].step)}
+                    className="px-6 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors flex items-center space-x-2 mx-auto"
+                  >
+                    <Timer className="w-5 h-5" />
+                    <span>Start Timer</span>
+                  </button>
                 </div>
-                
-                {!showTimerInput ? (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {presetTimers.map((minutes) => (
-                        <button
-                          key={minutes}
-                          onClick={() => startCustomTimer(minutes)}
-                          className="px-4 py-2 bg-slate-800/60 border border-slate-700/50 text-slate-200 rounded-lg font-semibold hover:border-primary-500/50 hover:bg-primary-500/10 transition-all"
-                        >
-                          {minutes} min
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setShowTimerInput(true)}
-                      className="w-full px-4 py-2 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-lg font-semibold hover:bg-primary-500/30 transition-all flex items-center justify-center space-x-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Custom Timer</span>
-                    </button>
+              ) : (
+                <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-800/50">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Timer className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
+                    <h3 className="text-lg sm:text-xl font-medium text-white">Quick Timer</h3>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
+                  <div className="flex flex-wrap gap-2">
+                    {presetTimers.map((minutes) => (
                       <button
-                        onClick={() => setCustomMinutes(Math.max(1, customMinutes - 1))}
-                        className="p-2 bg-slate-800/60 border border-slate-700/50 text-slate-200 rounded-lg hover:border-primary-500/50 transition-all"
+                        key={minutes}
+                        onClick={() => startCustomTimer(minutes)}
+                        className="px-4 py-2 bg-slate-800/60 border border-slate-700/50 text-slate-200 rounded-lg font-medium hover:border-primary-500/50 hover:bg-primary-500/10 transition-all"
                       >
-                        <Minus className="w-4 h-4" />
+                        {minutes} min
                       </button>
-                      <div className="flex-1 text-center">
-                        <input
-                          type="number"
-                          min="1"
-                          max="120"
-                          value={customMinutes}
-                          onChange={(e) => setCustomMinutes(Math.max(1, Math.min(120, parseInt(e.target.value) || 1)))}
-                          className="w-full px-4 py-2 bg-slate-800/60 border border-slate-700/50 text-white rounded-lg text-center text-lg font-bold focus:outline-none focus:border-primary-500/50"
-                        />
-                        <p className="text-xs text-slate-400 mt-1">minutes</p>
-                      </div>
-                      <button
-                        onClick={() => setCustomMinutes(Math.min(120, customMinutes + 1))}
-                        className="p-2 bg-slate-800/60 border border-slate-700/50 text-slate-200 rounded-lg hover:border-primary-500/50 transition-all"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => startCustomTimer(customMinutes)}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg font-semibold hover:from-primary-600 hover:to-primary-700 transition-all flex items-center justify-center space-x-2"
-                    >
-                      <Play className="w-4 h-4" />
-                      <span>Start {customMinutes} Minute Timer</span>
-                    </button>
+                    ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )
             )}
           </div>
           
           <div className="space-y-4">
+            {cookingMode && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-4 bg-gradient-to-r from-primary-500/20 via-primary-600/20 to-primary-500/20 border border-primary-500/30 rounded-xl"
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="p-2 bg-primary-500/30 rounded-lg">
+                    <UtensilsCrossed className="w-5 h-5 text-primary-300" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-white mb-1">Guided Cooking Mode</h3>
+                    <p className="text-xs text-slate-300">
+                      Follow each step one at a time. Use the timer for steps that need timing. Click "Next" when you're done with each step.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
             <AnimatePresence mode="wait">
               {cookingMode ? (
                 // Cooking Mode: Show only current step with large text and visuals
@@ -1192,7 +1221,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                         <div className="absolute inset-0 flex items-center justify-center text-xl sm:text-2xl">
                           {getStepIcon(currentRecipe.instructions[currentStep].step)}
                         </div>
-                        <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-900 border-2 border-primary-500 flex items-center justify-center text-xs sm:text-sm font-bold">
+                        <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-900 border-2 border-primary-500 flex items-center justify-center text-xs sm:text-sm font-medium">
                           {currentStep + 1}
                         </div>
                       </div>
@@ -1201,7 +1230,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     {/* Visual Food Preparation */}
                     {getStepVisuals(currentRecipe.instructions[currentStep].step).length > 0 && (
                       <div className="mb-6 p-6 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl border-2 border-primary-500/20 shadow-lg">
-                        <p className="text-center text-sm text-primary-300 mb-4 font-semibold uppercase tracking-wide">Visual Preparation Guide</p>
+                        <p className="text-center text-sm text-primary-300 mb-4 font-medium uppercase tracking-wide">Visual Preparation Guide</p>
                         <div className="flex items-center justify-center space-x-2 sm:space-x-3 text-3xl sm:text-4xl md:text-5xl mb-2 flex-wrap">
                           {getStepVisuals(currentRecipe.instructions[currentStep].step).map((visual, idx) => (
                             <div key={idx} className="flex items-center space-x-1">
@@ -1217,7 +1246,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     )}
                     
                     {/* Step Text */}
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-100 leading-relaxed mb-4 sm:mb-6 px-2">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-normal text-slate-100 leading-relaxed mb-4 sm:mb-6 px-2">
                       {currentRecipe.instructions[currentStep].step}
                     </p>
                     
@@ -1230,7 +1259,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                         className="mb-4 sm:mb-6 p-4 sm:p-6 md:p-8 bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 rounded-xl sm:rounded-2xl border-2 border-primary-500/40 shadow-2xl"
                       >
                         <div className="text-center mb-4 sm:mb-6">
-                          <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-primary-300 mb-2 uppercase tracking-wide">
+                          <h3 className="text-lg sm:text-xl md:text-2xl font-medium text-primary-300 mb-2 uppercase tracking-wide">
                             🎉 Final Result Preview
                           </h3>
                           <p className="text-xs sm:text-sm text-slate-300">This is what your {currentRecipe.name} will look like when done!</p>
@@ -1261,13 +1290,6 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                             <p className="text-sm sm:text-base text-slate-400 italic">AI image generating...</p>
                           </div>
                         )}
-                        {currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
-                          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                            <p className="text-xs sm:text-sm text-slate-300 text-center">
-                              <span className="text-primary-400 font-semibold">💡 Presentation Tip:</span> {currentRecipe.presentationTips[0]}
-                            </p>
-                          </div>
-                        )}
                       </motion.div>
                     )}
                     
@@ -1292,10 +1314,10 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                         </p>
                       </div>
                     )}
-                    {extractTimeFromStep(currentRecipe.instructions[currentStep].step) && (
+                    {extractTimeFromStep(currentRecipe.instructions[currentStep].step) && timerSeconds === null && (
                       <button
                         onClick={() => startTimerForStep(currentRecipe.instructions[currentStep].step)}
-                        className="mt-4 px-6 py-3 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition-colors flex items-center space-x-2 mx-auto"
+                        className="mt-4 px-6 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors flex items-center space-x-2 mx-auto"
                       >
                         <Timer className="w-5 h-5" />
                         <span>Start Timer for This Step</span>
@@ -1326,7 +1348,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   >
                     <div className="flex items-start space-x-4">
                       <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-lg bg-gradient-to-br ${getStepColor(instruction.step)} text-white relative ${
+                          className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-medium text-lg bg-gradient-to-br ${getStepColor(instruction.step)} text-white relative ${
                             isCompleted ? 'opacity-50' : ''
                           }`}
                         >
@@ -1383,7 +1405,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                 }
               }}
               disabled={currentStep === 0}
-              className={`w-full sm:w-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl border-2 border-slate-700 text-slate-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800/60 transition-colors text-sm sm:text-base ${
+              className={`w-full sm:w-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl border-2 border-slate-700 text-slate-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800/60 transition-colors text-sm sm:text-base ${
                 cookingMode ? 'md:text-lg lg:text-xl' : ''
               }`}
             >
@@ -1416,7 +1438,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                 }
               }}
               disabled={currentStep === currentRecipe.instructions.length - 1}
-              className={`w-full sm:w-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-primary-600 hover:to-primary-700 transition-colors shadow-lg hover:shadow-primary-500/25 text-sm sm:text-base ${
+              className={`w-full sm:w-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:from-primary-600 hover:to-primary-700 transition-colors shadow-lg hover:shadow-primary-500/25 text-sm sm:text-base ${
                 cookingMode ? 'md:text-lg lg:text-xl' : ''
               }`}
             >
@@ -1446,7 +1468,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   </>
                 )}
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold mb-2">🎉 Recipe Complete!</h3>
+              <h3 className="text-2xl sm:text-3xl font-medium mb-2">🎉 Recipe Complete!</h3>
               <p className="text-lg sm:text-xl mb-3 sm:mb-4">Great job! Your meal is ready to serve.</p>
               <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-white/10 rounded-xl backdrop-blur-sm">
                 <p className="text-xs sm:text-sm opacity-90 mb-2">This is what your {currentRecipe.name} should look like!</p>
@@ -1462,6 +1484,37 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   </div>
                 )}
               </div>
+              
+              {/* Presentation Tips - Show in cooking mode after completion */}
+              {currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-6 sm:mt-8 glass-effect rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-2 border-primary-500/40 shadow-xl"
+                >
+                  <h2 className="text-xl sm:text-2xl font-medium text-slate-100 mb-4 flex items-center space-x-2">
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
+                    <span>Make It Look Amazing! (Quick & Easy)</span>
+                  </h2>
+                  <div className="space-y-3 sm:space-y-4">
+                    {currentRecipe.presentationTips.map((tip, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 + index * 0.1 }}
+                        className="flex items-start space-x-3 sm:space-x-4"
+                      >
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center flex-shrink-0 text-sm sm:text-base font-medium shadow-lg">
+                          {index + 1}
+                        </div>
+                        <p className="text-slate-200 flex-1 text-sm sm:text-base leading-relaxed">{tip}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </div>
           )}
         </div>
@@ -1469,11 +1522,11 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         {/* Nutritional Info */}
         {currentRecipe.nutrition && (
           <div className="glass-effect rounded-2xl p-6 border-slate-800/80">
-            <h2 className="text-2xl font-bold text-slate-100 mb-4">Nutritional Information</h2>
+            <h2 className="text-2xl font-medium text-slate-100 mb-4">Nutritional Information</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(currentRecipe.nutrition).map(([key, value]) => (
                 <div key={key} className="text-center p-4 bg-slate-800/60 border border-slate-700/50 rounded-xl">
-                  <div className="text-2xl font-bold text-primary-400">{value}</div>
+                  <div className="text-2xl font-medium text-primary-400">{value}</div>
                   <div className="text-sm text-slate-400 capitalize">{key}</div>
                 </div>
               ))}
@@ -1483,18 +1536,21 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
       </div>
 
         {/* AI Chat Sidebar - Always Visible */}
-        <div className="hidden lg:block w-full lg:w-80 xl:w-96 flex-shrink-0">
+        <div className="hidden lg:block w-full lg:w-80 xl:w-96 flex-shrink-0 relative">
           <div className="sticky top-4 sm:top-8 h-[calc(100vh-2rem)] sm:h-[calc(100vh-4rem)]">
             <div className="h-full bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
               <AIChat
                 onRecipeGenerated={handleRecipeUpdated}
                 currentRecipe={currentRecipe}
-                availableIngredients={availableIngredients}
+                availableIngredients={availableIngredients.filter((_, idx) => !removedIngredients.has(idx))}
                 userPreferences={userPreferences}
                 onClose={undefined}
+                removedIngredients={Array.from(removedIngredients).map(idx => currentRecipe.ingredients[idx]?.name).filter(Boolean)}
+                autoSendMessage={autoSendMessage}
               />
             </div>
           </div>
+          
         </div>
 
         {/* Mobile AI Chat Button */}
@@ -1514,9 +1570,11 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             <AIChat
               onRecipeGenerated={handleRecipeUpdated}
               currentRecipe={currentRecipe}
-              availableIngredients={availableIngredients}
+              availableIngredients={availableIngredients.filter((_, idx) => !removedIngredients.has(idx))}
               userPreferences={userPreferences}
               onClose={() => setShowAIChat(false)}
+              removedIngredients={Array.from(removedIngredients).map(idx => currentRecipe.ingredients[idx]?.name).filter(Boolean)}
+              autoSendMessage={autoSendMessage}
             />
           </div>
         </div>
@@ -1539,6 +1597,90 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
           <span className="absolute -top-2 -right-2 w-3 h-3 bg-primary-400 rounded-full animate-ping"></span>
         </button>
       )}
+
+      {/* AI Help Popup */}
+      <AnimatePresence>
+        {showAIHelpPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowAIHelpPopup(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-effect rounded-2xl sm:rounded-3xl border border-primary-500/30 p-6 sm:p-8 max-w-md w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-primary-500/20 rounded-xl">
+                    <Sparkles className="w-6 h-6 text-primary-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-medium text-white">AI Recipe Assistant</h3>
+                    <p className="text-sm text-slate-400">I can help you modify recipes!</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAIHelpPopup(false)}
+                  className="text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="p-4 bg-primary-500/10 border border-primary-500/30 rounded-xl">
+                  <p className="text-sm text-slate-200 mb-3">
+                    <strong className="text-primary-300">💡 What I can do:</strong>
+                  </p>
+                  <ul className="space-y-2 text-sm text-slate-300">
+                    <li className="flex items-start space-x-2">
+                      <span className="text-primary-400">•</span>
+                      <span>Modify ingredients (e.g., "change chicken to turkey")</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-primary-400">•</span>
+                      <span>Adjust steps (e.g., "break step 2 into two steps")</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-primary-400">•</span>
+                      <span>Make dietary changes (e.g., "make it vegan")</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-primary-400">•</span>
+                      <span>Answer cooking questions</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowAIHelpPopup(false)
+                    setShowAIChat(true)
+                  }}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-medium hover:from-primary-600 hover:to-primary-700 transition-all flex items-center justify-center space-x-2"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Open AI Chat</span>
+                </button>
+                <button
+                  onClick={() => setShowAIHelpPopup(false)}
+                  className="px-6 py-3 border border-slate-700 text-slate-300 rounded-xl font-medium hover:bg-slate-800/60 transition-colors"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Smart Timer Picker Modal */}
       <AnimatePresence>
@@ -1566,7 +1708,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     <Timer className="w-6 h-6 text-primary-400" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white">Choose Timer Duration</h3>
+                    <h3 className="text-xl font-medium text-white">Choose Timer Duration</h3>
                     <p className="text-sm text-slate-400">Select how long you want to wait</p>
                   </div>
                 </div>
@@ -1586,7 +1728,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   <button
                     key={minutes}
                     onClick={() => startTimerWithMinutes(minutes)}
-                    className="w-full px-6 py-4 bg-gradient-to-r from-primary-500/20 to-primary-600/20 border-2 border-primary-500/30 text-white rounded-xl font-semibold hover:border-primary-500/60 hover:from-primary-500/30 hover:to-primary-600/30 transition-all flex items-center justify-between group"
+                    className="w-full px-6 py-4 bg-gradient-to-r from-primary-500/20 to-primary-600/20 border-2 border-primary-500/30 text-white rounded-xl font-medium hover:border-primary-500/60 hover:from-primary-500/30 hover:to-primary-600/30 transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 rounded-full bg-primary-500/30 flex items-center justify-center group-hover:bg-primary-500/50 transition-colors">

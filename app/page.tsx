@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
-import Auth from '@/components/Auth'
+import LandingPage from '@/components/LandingPage'
 
 export default function Home() {
   const router = useRouter()
@@ -36,9 +36,9 @@ export default function Home() {
     )
   }
 
-  // Show auth if not logged in
+  // Show landing page if not logged in
   if (!user) {
-    return <Auth />
+    return <LandingPage />
   }
 
   return null

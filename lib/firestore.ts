@@ -10,54 +10,64 @@ import {
   getDocs,
   writeBatch
 } from 'firebase/firestore'
-import { db } from './firebase'
+import { db, auth } from './firebase'
 import { Recipe } from '@/data/recipes'
 
 const SAVED_RECIPES_COLLECTION = 'savedRecipes'
 
 export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
   try {
+    // Verify user is authenticated and userId matches
+    const currentUser = auth.currentUser
+    if (!currentUser) {
+      throw new Error('User is not authenticated')
+    }
+    
+    if (currentUser.uid !== userId) {
+      throw new Error('User ID does not match authenticated user')
+    }
+    
     const recipeRef = doc(db, SAVED_RECIPES_COLLECTION, `${userId}_${recipe.id}`)
     
-    // Check if document exists to determine if it's create or update
+    // Check if document exists to preserve savedAt timestamp
     const docSnap = await getDoc(recipeRef)
     const existingData = docSnap.exists() ? docSnap.data() : null
     
+    // Simple data structure - just like userPreferences
     const recipeData = {
-      userId,
+      userId: currentUser.uid,
       recipeId: recipe.id,
       recipe: recipe,
       savedAt: existingData?.savedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
     
-    // Use explicit create or update based on document existence
-    // This ensures security rules are properly applied
-    if (docSnap.exists()) {
-      // Update existing document - use updateDoc for explicit update operation
-      await updateDoc(recipeRef, recipeData)
-    } else {
-      // Create new document - use setDoc for explicit create operation
-      await setDoc(recipeRef, recipeData)
-    }
+    // Debug: Log what we're trying to save
+    console.log('Attempting to save recipe:', {
+      documentId: `${userId}_${recipe.id}`,
+      userId: currentUser.uid,
+      recipeDataUserId: recipeData.userId,
+      userIdsMatch: currentUser.uid === recipeData.userId,
+      hasRecipe: !!recipeData.recipe,
+      hasRecipeId: !!recipeData.recipeId
+    })
+    
+    // Use setDoc with merge: true - simple like userPreferences
+    await setDoc(recipeRef, recipeData, { merge: true })
+    
+    console.log('Recipe saved successfully!')
     
     return true
   } catch (error: any) {
     console.error('Error saving recipe to Firestore:', error)
-    console.error('Error code:', error?.code)
-    console.error('Error message:', error?.message)
-    console.error('User ID:', userId)
-    console.error('Recipe ID:', recipe.id)
     
-    // Provide more specific error messages
     if (error?.code === 'permission-denied') {
       throw new Error('Permission denied. Please check Firestore security rules are deployed.')
     }
     if (error?.code === 'unavailable' || error?.code === 'deadline-exceeded' || error?.code === 'failed-precondition') {
       throw new Error('Firestore is temporarily unavailable. Please check your internet connection and try again.')
     }
-    // Re-throw with original error message for better debugging
-    throw new Error(error?.message || 'Failed to save recipe. Please check the console for details.')
+    throw new Error(error?.message || 'Failed to save recipe.')
   }
 }
 
@@ -161,12 +171,15 @@ export async function updateSavedRecipe(userId: string, recipe: Recipe) {
 // User Preferences
 export interface UserPreferences {
   dietaryRestrictions: string[]
+  allergies?: string[]
   numberOfPeople: number
   hasKids: boolean
   hasPartner: boolean
   kidsAges?: string[]
   preferences?: string[]
   kitchenEquipment?: string[]
+  healthGoals?: string[]
+  onboardingCompleted?: boolean
 }
 
 const USER_PREFERENCES_COLLECTION = 'userPreferences'

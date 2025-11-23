@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
 import Dashboard from '@/components/Dashboard'
+import Onboarding from '@/components/Onboarding'
 import { Recipe } from '@/data/recipes'
 import { 
   saveRecipeToFirestore, 
@@ -21,6 +22,7 @@ export default function DashboardPage() {
   const [savedRecipesLoading, setSavedRecipesLoading] = useState(false)
   const [userPreferences, setUserPreferences] = useState<any>(null)
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([])
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const loadingRef = useRef(false) // Prevent concurrent loads
 
   useEffect(() => {
@@ -60,10 +62,25 @@ export default function DashboardPage() {
       const prefs = await getUserPreferences(user.uid)
       if (prefs) {
         setUserPreferences(prefs)
+        // Show onboarding if not completed
+        if (!prefs.onboardingCompleted) {
+          setShowOnboarding(true)
+        }
+      } else {
+        // No preferences found, show onboarding
+        setShowOnboarding(true)
       }
     } catch (error) {
       console.error('Error loading user preferences:', error)
+      // Show onboarding on error too
+      setShowOnboarding(true)
     }
+  }
+
+  const handleOnboardingComplete = async () => {
+    setShowOnboarding(false)
+    // Reload preferences after onboarding
+    await loadUserPreferences()
   }
 
   const saveRecipe = useCallback(async (recipe: Recipe) => {
@@ -142,6 +159,11 @@ export default function DashboardPage() {
 
   if (!user) {
     return null
+  }
+
+  // Show onboarding if needed
+  if (showOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />
   }
 
   return (

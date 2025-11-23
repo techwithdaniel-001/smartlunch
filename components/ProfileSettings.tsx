@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Save, LogOut, Users, Baby, Heart, AlertCircle, ChefHat } from 'lucide-react'
+import { X, Save, LogOut, Users, Baby, Heart, AlertCircle, ChefHat, Check } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getUserPreferences, saveUserPreferences, UserPreferences } from '@/lib/firestore'
 
@@ -23,6 +23,29 @@ const DIETARY_OPTIONS = [
   'Paleo'
 ]
 
+const ALLERGY_OPTIONS = [
+  'Peanuts',
+  'Tree Nuts',
+  'Dairy',
+  'Eggs',
+  'Fish',
+  'Shellfish',
+  'Soy',
+  'Wheat',
+  'Sesame',
+  'Other'
+]
+
+const HEALTH_GOALS = [
+  'Eat more vegetables',
+  'Increase protein intake',
+  'More balanced meals',
+  'Weight management',
+  'Build healthy habits',
+  'Energy boost',
+  'Better nutrition for kids'
+]
+
 const KITCHEN_EQUIPMENT = [
   { id: 'oven', label: 'Oven', description: 'For baking and roasting' },
   { id: 'stovetop', label: 'Stovetop', description: 'Gas or electric burner' },
@@ -42,14 +65,18 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
   const { user, signOut } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [customAllergy, setCustomAllergy] = useState('')
+  const [customDietary, setCustomDietary] = useState('')
   const [preferences, setPreferences] = useState<UserPreferences>({
     dietaryRestrictions: [],
+    allergies: [],
     numberOfPeople: 2,
     hasKids: false,
     hasPartner: false,
     kidsAges: [],
     preferences: [],
-    kitchenEquipment: []
+    kitchenEquipment: [],
+    healthGoals: []
   })
 
   useEffect(() => {
@@ -65,6 +92,7 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
       if (saved) {
         setPreferences({
           ...saved,
+          allergies: saved.allergies || [],
           kitchenEquipment: saved.kitchenEquipment || []
         })
       }
@@ -109,6 +137,44 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
       kitchenEquipment: prev.kitchenEquipment?.includes(equipment)
         ? prev.kitchenEquipment.filter(e => e !== equipment)
         : [...(prev.kitchenEquipment || []), equipment]
+    }))
+  }
+
+  const toggleAllergy = (allergy: string) => {
+    setPreferences(prev => ({
+      ...prev,
+      allergies: prev.allergies?.includes(allergy)
+        ? prev.allergies.filter(a => a !== allergy)
+        : [...(prev.allergies || []), allergy]
+    }))
+  }
+
+  const addCustomAllergy = () => {
+    if (customAllergy.trim() && !preferences.allergies?.includes(customAllergy.trim())) {
+      setPreferences(prev => ({
+        ...prev,
+        allergies: [...(prev.allergies || []), customAllergy.trim()]
+      }))
+      setCustomAllergy('')
+    }
+  }
+
+  const addCustomDietary = () => {
+    if (customDietary.trim() && !preferences.dietaryRestrictions.includes(customDietary.trim())) {
+      setPreferences(prev => ({
+        ...prev,
+        dietaryRestrictions: [...prev.dietaryRestrictions, customDietary.trim()]
+      }))
+      setCustomDietary('')
+    }
+  }
+
+  const toggleHealthGoal = (goal: string) => {
+    setPreferences(prev => ({
+      ...prev,
+      healthGoals: prev.healthGoals?.includes(goal)
+        ? prev.healthGoals.filter(g => g !== goal)
+        : [...(prev.healthGoals || []), goal]
     }))
   }
 
@@ -174,27 +240,73 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
                 />
               </div>
 
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center space-x-2 cursor-pointer">
+              <div className="space-y-3">
+                <label 
+                  className={`group relative flex items-center space-x-4 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                    preferences.hasPartner
+                      ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
+                      : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 ${
+                    preferences.hasPartner
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
+                      : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                  }`}>
+                    {preferences.hasPartner && (
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-3 flex-1">
+                    <Heart className={`w-4 h-4 transition-colors ${
+                      preferences.hasPartner ? 'text-primary-400' : 'text-slate-500 group-hover:text-primary-500/70'
+                    }`} />
+                    <span className={`text-sm font-medium transition-colors ${
+                      preferences.hasPartner ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                    }`}>
+                      Have a partner
+                    </span>
+                  </div>
                   <input
                     type="checkbox"
                     checked={preferences.hasPartner}
                     onChange={(e) => setPreferences(prev => ({ ...prev, hasPartner: e.target.checked }))}
-                    className="w-4 h-4 text-primary-500 bg-slate-800 border-slate-700 rounded focus:ring-primary-500"
+                    className="sr-only"
                   />
-                  <Heart className="w-4 h-4 text-primary-400" />
-                  <span className="text-slate-300">Have a partner</span>
                 </label>
 
-                <label className="flex items-center space-x-2 cursor-pointer">
+                <label 
+                  className={`group relative flex items-center space-x-4 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                    preferences.hasKids
+                      ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
+                      : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 ${
+                    preferences.hasKids
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
+                      : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                  }`}>
+                    {preferences.hasKids && (
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-3 flex-1">
+                    <Baby className={`w-4 h-4 transition-colors ${
+                      preferences.hasKids ? 'text-primary-400' : 'text-slate-500 group-hover:text-primary-500/70'
+                    }`} />
+                    <span className={`text-sm font-medium transition-colors ${
+                      preferences.hasKids ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                    }`}>
+                      Have kids
+                    </span>
+                  </div>
                   <input
                     type="checkbox"
                     checked={preferences.hasKids}
                     onChange={(e) => setPreferences(prev => ({ ...prev, hasKids: e.target.checked }))}
-                    className="w-4 h-4 text-primary-500 bg-slate-800 border-slate-700 rounded focus:ring-primary-500"
+                    className="sr-only"
                   />
-                  <Baby className="w-4 h-4 text-primary-400" />
-                  <span className="text-slate-300">Have kids</span>
                 </label>
               </div>
 
@@ -229,19 +341,155 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
               {DIETARY_OPTIONS.map((option) => (
                 <label
                   key={option}
-                  className={`flex items-center space-x-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                  className={`group relative flex items-center space-x-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                     preferences.dietaryRestrictions.includes(option)
-                      ? 'bg-primary-500/20 border-primary-500/50'
-                      : 'bg-slate-800/60 border-slate-700/50 hover:border-primary-500/30'
+                      ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
+                      : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
                   }`}
                 >
+                  <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 flex-shrink-0 ${
+                    preferences.dietaryRestrictions.includes(option)
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
+                      : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                  }`}>
+                    {preferences.dietaryRestrictions.includes(option) && (
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    )}
+                  </div>
+                  <span className={`text-sm font-medium transition-colors flex-1 ${
+                    preferences.dietaryRestrictions.includes(option) ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                  }`}>{option}</span>
                   <input
                     type="checkbox"
                     checked={preferences.dietaryRestrictions.includes(option)}
                     onChange={() => toggleDietaryRestriction(option)}
-                    className="w-4 h-4 text-primary-500 bg-slate-800 border-slate-700 rounded focus:ring-primary-500"
+                    className="sr-only"
                   />
-                  <span className="text-sm text-slate-300">{option}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 flex space-x-2">
+              <input
+                type="text"
+                value={customDietary}
+                onChange={(e) => setCustomDietary(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addCustomDietary()}
+                placeholder="Add custom dietary restriction..."
+                className="flex-1 px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder-slate-500 focus:border-primary-500/50 focus:outline-none"
+              />
+              <button
+                onClick={addCustomDietary}
+                className="px-6 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {/* Allergies */}
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <span>Allergies</span>
+            </h3>
+            <p className="text-sm text-red-400 mb-4">
+              ⚠️ Critical: We will NEVER include these ingredients in your recipes
+            </p>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {ALLERGY_OPTIONS.map((allergy) => (
+                <label
+                  key={allergy}
+                  className={`group relative flex items-center space-x-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                    preferences.allergies?.includes(allergy)
+                      ? 'bg-gradient-to-br from-red-500/20 via-red-600/20 to-red-500/20 border-red-500/60 shadow-lg shadow-red-500/20'
+                      : 'bg-slate-800/40 border-slate-700/50 hover:border-red-500/40 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 flex-shrink-0 ${
+                    preferences.allergies?.includes(allergy)
+                      ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-400 shadow-lg shadow-red-500/30'
+                      : 'bg-slate-800/60 border-slate-600 group-hover:border-red-500/50'
+                  }`}>
+                    {preferences.allergies?.includes(allergy) && (
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    )}
+                  </div>
+                  <span className={`text-sm font-medium transition-colors flex-1 ${
+                    preferences.allergies?.includes(allergy) ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                  }`}>{allergy}</span>
+                  <input
+                    type="checkbox"
+                    checked={preferences.allergies?.includes(allergy) || false}
+                    onChange={() => toggleAllergy(allergy)}
+                    className="sr-only"
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 flex space-x-2">
+              <input
+                type="text"
+                value={customAllergy}
+                onChange={(e) => setCustomAllergy(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addCustomAllergy()}
+                placeholder="Add custom allergy..."
+                className="flex-1 px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder-slate-500 focus:border-red-500/50 focus:outline-none"
+              />
+              <button
+                onClick={addCustomAllergy}
+                className="px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+            {preferences.allergies && preferences.allergies.length > 0 && (
+              <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                <p className="text-sm text-red-400">
+                  <strong>Selected allergies:</strong> {preferences.allergies.join(', ')}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Health Goals */}
+          <div>
+            <h3 className="text-lg font-medium text-white mb-4 flex items-center space-x-2">
+              <Heart className="w-5 h-5 text-primary-400" />
+              <span>Health Goals</span>
+            </h3>
+            <p className="text-sm text-slate-400 mb-4">
+              Select your health goals and we'll tailor recipes to help you achieve them
+            </p>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {HEALTH_GOALS.map((goal) => (
+                <label
+                  key={goal}
+                  className={`group relative flex items-center space-x-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                    preferences.healthGoals?.includes(goal)
+                      ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
+                      : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 flex-shrink-0 ${
+                    preferences.healthGoals?.includes(goal)
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
+                      : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                  }`}>
+                    {preferences.healthGoals?.includes(goal) && (
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    )}
+                  </div>
+                  <span className={`text-sm font-medium transition-colors flex-1 ${
+                    preferences.healthGoals?.includes(goal) ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                  }`}>{goal}</span>
+                  <input
+                    type="checkbox"
+                    checked={preferences.healthGoals?.includes(goal) || false}
+                    onChange={() => toggleHealthGoal(goal)}
+                    className="sr-only"
+                  />
                 </label>
               ))}
             </div>
@@ -261,22 +509,35 @@ export default function ProfileSettings({ onClose, onPreferencesUpdated }: Profi
               {KITCHEN_EQUIPMENT.map((equipment) => (
                 <label
                   key={equipment.id}
-                  className={`flex items-start space-x-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`group relative flex items-start space-x-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                     preferences.kitchenEquipment?.includes(equipment.id)
-                      ? 'bg-primary-500/20 border-primary-500/50'
-                      : 'bg-slate-800/60 border-slate-700/50 hover:border-primary-500/30'
+                      ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
+                      : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
                   }`}
                 >
+                  <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 flex-shrink-0 mt-0.5 ${
+                    preferences.kitchenEquipment?.includes(equipment.id)
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
+                      : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                  }`}>
+                    {preferences.kitchenEquipment?.includes(equipment.id) && (
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <span className={`text-sm font-medium block transition-colors ${
+                      preferences.kitchenEquipment?.includes(equipment.id) ? 'text-white' : 'text-slate-200 group-hover:text-slate-100'
+                    }`}>{equipment.label}</span>
+                    <span className={`text-xs transition-colors ${
+                      preferences.kitchenEquipment?.includes(equipment.id) ? 'text-slate-300' : 'text-slate-400'
+                    }`}>{equipment.description}</span>
+                  </div>
                   <input
                     type="checkbox"
                     checked={preferences.kitchenEquipment?.includes(equipment.id) || false}
                     onChange={() => toggleKitchenEquipment(equipment.id)}
-                    className="w-4 h-4 mt-0.5 text-primary-500 bg-slate-800 border-slate-700 rounded focus:ring-primary-500"
+                    className="sr-only"
                   />
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-slate-200 block">{equipment.label}</span>
-                    <span className="text-xs text-slate-400">{equipment.description}</span>
-                  </div>
                 </label>
               ))}
             </div>
