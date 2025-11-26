@@ -38,7 +38,7 @@ export default function StoryPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className={`flex-1 overflow-y-auto md:border-r transition-colors duration-300 ${isDark ? 'md:border-slate-800' : 'md:border-slate-200'}`}
           >
-            <div className={`p-6 lg:p-12 space-y-8 text-lg sm:text-xl leading-relaxed transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-12 space-y-8 text-lg sm:text-xl leading-relaxed transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
               <div className="mb-8">
                 <h1 className={`text-4xl sm:text-5xl md:text-6xl font-medium mb-4 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Our Story
@@ -80,7 +80,7 @@ export default function StoryPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className={`md:sticky md:top-20 md:h-[calc(100vh-5rem)] md:overflow-y-auto w-full md:w-1/4 lg:w-1/3 p-6 lg:p-8 transition-colors duration-300 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50/50'}`}
+            className={`md:sticky md:top-20 md:h-[calc(100vh-5rem)] md:overflow-y-auto w-full md:w-1/4 lg:w-1/3 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 transition-colors duration-300 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50/50'}`}
           >
             <div className="flex flex-col items-center justify-center h-full space-y-4">
               {/* Profile Image - Smaller */}
