@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { BookmarkCheck, ArrowLeft, ChefHat, Plus } from 'lucide-react'
@@ -70,13 +69,7 @@ export default function SavedPage() {
       <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-white'}`}>
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 relative animate-pulse">
-            <Image
-              src="/assets/smartlunchlogo.png"
-              alt="Smart Lunch Logo"
-              fill
-              className="object-contain"
-              priority
-            />
+            <div className={`w-16 h-16 rounded-full transition-colors duration-300 ${isDark ? 'bg-primary-500/20' : 'bg-primary-100'}`}></div>
           </div>
           <p className={`transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>Loading...</p>
         </div>
