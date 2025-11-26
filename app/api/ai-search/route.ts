@@ -177,69 +177,17 @@ Generate a recipe based on: "${query}"`
       },
     }
 
-    // Generate image for the recipe (this is important for the final preview)
-    // We'll wait for it since it's a key feature, but optimize the prompt for speed
-    try {
-      const mainIngredients = recipe.ingredients.slice(0, 5).map((i: any) => i.name).join(', ')
-      const presentation = recipe.presentationTips && recipe.presentationTips.length > 0 
-        ? recipe.presentationTips[0] 
-        : 'beautifully arranged on a plate'
-      const imagePrompt = `Professional food photography of ${recipe.name}, a delicious cooked and prepared dish. The final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
-      
-      console.log('Generating image for recipe:', recipe.name)
-      console.log('Image prompt:', imagePrompt)
-      
-      const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'dall-e-3',
-          prompt: imagePrompt,
-          n: 1,
-          size: '1024x1024',
-          quality: 'standard',
-        }),
-      })
-
-      if (!imageResponse.ok) {
-        const errorText = await imageResponse.text()
-        console.error('Image generation failed:', imageResponse.status, errorText)
-        throw new Error(`Image generation failed: ${imageResponse.status}`)
-      }
-
-      const imageData = await imageResponse.json()
-      console.log('Image generation response:', imageData)
-      
-      if (imageData.data && imageData.data[0]?.url) {
-        recipe.imageUrl = imageData.data[0].url
-        console.log('Image URL set:', recipe.imageUrl)
-      } else {
-        console.error('No image URL in response:', imageData)
-      }
-    } catch (imageError: any) {
-      console.error('Image generation error:', imageError)
-      console.error('Error details:', {
-        message: imageError?.message,
-        stack: imageError?.stack,
-        name: imageError?.name
-      })
-      // Continue without image if generation fails, but log it
-      recipe.imageUrl = undefined
-    }
-
-    // Ensure imageUrl is included in the response
-    console.log('Returning recipe with imageUrl:', recipe.imageUrl ? 'YES' : 'NO')
-    console.log('Recipe object:', JSON.stringify({ ...recipe, imageUrl: recipe.imageUrl }))
-    
+    // Return recipe immediately - image generation happens in background (optional)
+    // This makes recipe generation much faster
     return NextResponse.json({
       recipe: {
         ...recipe,
-        imageUrl: recipe.imageUrl, // Explicitly include imageUrl
+        imageUrl: undefined, // Image will be generated on-demand when viewing recipe details
       },
     })
+
+    // Note: Image generation moved to recipe detail page for faster initial response
+    // Images can be generated on-demand when user views the full recipe
   } catch (error: any) {
     console.error('AI Search Error:', error)
     return NextResponse.json(

@@ -45,9 +45,6 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
       updatedAt: new Date().toISOString(),
     }
     
-    // Explicitly set userId again to ensure it's correct
-    recipeData.userId = currentUser.uid
-    
     // Debug: Log what we're trying to save
     console.log('Attempting to save recipe:', {
       documentId: `${userId}_${recipe.id}`,
@@ -60,9 +57,17 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
       existingUserId: existingData?.userId
     })
     
-    // Use setDoc without merge to ensure clean write
-    // This ensures userId is always set correctly
-    await setDoc(recipeRef, recipeData)
+    // Use proper create/update logic to match security rules
+    if (exists) {
+      // Update existing document - rules require both existing and new userId to match
+      if (existingData?.userId !== currentUser.uid) {
+        throw new Error('Cannot update recipe: userId mismatch')
+      }
+      await updateDoc(recipeRef, recipeData)
+    } else {
+      // Create new document - rules require userId to match auth.uid
+      await setDoc(recipeRef, recipeData)
+    }
     
     console.log('Recipe saved successfully!')
     
