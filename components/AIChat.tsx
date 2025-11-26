@@ -105,6 +105,10 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
             throw new Error(data.error)
           }
 
+          console.log('AI Chat response received:', data)
+          console.log('Recipe in response:', data.recipe)
+          console.log('Recipe ingredients:', data.recipe?.ingredients)
+
           const assistantMessage: Message = {
             role: 'assistant',
             content: data.message,
@@ -122,10 +126,17 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
           })
 
           if (data.recipe && onRecipeGenerated) {
+            console.log('Calling onRecipeGenerated with recipe:', data.recipe)
+            console.log('Recipe ingredients being passed:', data.recipe.ingredients)
             // Play success sound when recipe is generated
             playRecipeCompleteSound()
             // Update the recipe - this will trigger the notification in RecipeDetail
+            // Ensure we pass a complete recipe object
             onRecipeGenerated(data.recipe)
+          } else {
+            console.log('No recipe in response or onRecipeGenerated not available')
+            console.log('Has recipe:', !!data.recipe)
+            console.log('Has onRecipeGenerated:', !!onRecipeGenerated)
           }
         })
         .catch(error => {
