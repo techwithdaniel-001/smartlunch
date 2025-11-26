@@ -180,7 +180,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-white'}`}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900' : 'bg-white'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -197,14 +197,14 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               priority
             />
           </div>
-          <h2 className={`text-2xl sm:text-3xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h2 className={`text-2xl sm:text-3xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-primary-900'}`}>
             Welcome to Smart Lunch! 👋
           </h2>
-          <p className={`text-sm sm:text-base transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          <p className={`text-sm sm:text-base transition-colors duration-300 ${isDark ? 'text-primary-300' : 'text-primary-600'}`}>
             Let's personalize your experience (Step {step} of {totalSteps})
           </p>
           {/* Progress Bar */}
-          <div className={`mt-4 h-2 rounded-full overflow-hidden transition-colors duration-300 ${isDark ? 'bg-slate-800/50' : 'bg-slate-200'}`}>
+          <div className={`mt-4 h-2 rounded-full overflow-hidden transition-colors duration-300 ${isDark ? 'bg-primary-900/30' : 'bg-primary-100'}`}>
             <motion.div
               className="h-full bg-gradient-to-r from-primary-500 via-primary-600 to-primary-500 rounded-full"
               initial={{ width: '0%' }}
@@ -233,7 +233,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     <Sun className="w-12 h-12 text-primary-400 mx-auto mb-4" />
                   )}
                   <h3 className="text-xl font-bold text-white mb-2">Choose Your Theme</h3>
-                  <p className="text-slate-400 text-sm">Pick a theme that's comfortable for you. You can change this anytime in settings.</p>
+                  <p className="text-primary-300 text-sm">Pick a theme that's comfortable for you. You can change this anytime in settings.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <button
@@ -241,13 +241,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     className={`group relative flex flex-col items-center justify-center space-y-3 p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                       preferences.theme === 'light'
                         ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
-                        : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                        : 'bg-primary-900/20 border-primary-800/50 hover:border-primary-500/40 hover:bg-primary-900/30'
                     }`}
                   >
                     <div className={`relative flex items-center justify-center w-8 h-8 rounded-lg border-2 transition-all duration-300 ${
                       preferences.theme === 'light'
                         ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
-                        : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                        : 'bg-primary-900/40 border-primary-700/50 group-hover:border-primary-500/50'
                     }`}>
                       {preferences.theme === 'light' && (
                         <Check className="w-5 h-5 text-white" />
@@ -255,10 +255,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     </div>
                     <Sun className="w-10 h-10 text-primary-400" />
                     <span className={`text-base font-medium transition-colors ${
-                      preferences.theme === 'light' ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                      preferences.theme === 'light' ? 'text-white' : 'text-primary-200 group-hover:text-primary-100'
                     }`}>Light</span>
                     <p className={`text-xs text-center transition-colors ${
-                      preferences.theme === 'light' ? 'text-slate-300' : 'text-slate-500 group-hover:text-slate-400'
+                      preferences.theme === 'light' ? 'text-primary-200' : 'text-primary-400 group-hover:text-primary-300'
                     }`}>Clean and bright</p>
                   </button>
                   <button
@@ -266,13 +266,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     className={`group relative flex flex-col items-center justify-center space-y-3 p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                       preferences.theme === 'dark'
                         ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
-                        : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                        : 'bg-primary-900/20 border-primary-800/50 hover:border-primary-500/40 hover:bg-primary-900/30'
                     }`}
                   >
                     <div className={`relative flex items-center justify-center w-8 h-8 rounded-lg border-2 transition-all duration-300 ${
                       preferences.theme === 'dark'
                         ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
-                        : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                        : 'bg-primary-900/40 border-primary-700/50 group-hover:border-primary-500/50'
                     }`}>
                       {preferences.theme === 'dark' && (
                         <Check className="w-5 h-5 text-white" />
@@ -280,10 +280,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     </div>
                     <Moon className="w-10 h-10 text-primary-400" />
                     <span className={`text-base font-medium transition-colors ${
-                      preferences.theme === 'dark' ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                      preferences.theme === 'dark' ? 'text-white' : 'text-primary-200 group-hover:text-primary-100'
                     }`}>Dark</span>
                     <p className={`text-xs text-center transition-colors ${
-                      preferences.theme === 'dark' ? 'text-slate-300' : 'text-slate-500 group-hover:text-slate-400'
+                      preferences.theme === 'dark' ? 'text-primary-200' : 'text-primary-400 group-hover:text-primary-300'
                     }`}>Easy on the eyes</p>
                   </button>
                 </div>
@@ -296,7 +296,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <div className="text-center">
                   <Users className="w-12 h-12 text-primary-400 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-white mb-2">How many people are you cooking for?</h3>
-                  <p className="text-slate-400 text-sm">This helps us adjust serving sizes</p>
+                  <p className="text-primary-300 text-sm">This helps us adjust serving sizes</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
@@ -306,7 +306,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                       className={`p-4 rounded-xl border-2 transition-all ${
                         preferences.numberOfPeople === num
                           ? 'border-primary-500 bg-primary-500/20 text-white'
-                          : 'border-slate-700 bg-slate-800/50 text-slate-300 hover:border-primary-500/50'
+                          : 'border-primary-800/50 bg-primary-900/30 text-primary-200 hover:border-primary-500/50 hover:bg-primary-900/40'
                       }`}
                     >
                       <div className="text-2xl font-bold">{num}</div>
@@ -319,13 +319,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     className={`group relative flex items-center space-x-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                       preferences.hasPartner
                         ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
-                        : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                        : 'bg-primary-900/20 border-primary-800/50 hover:border-primary-500/40 hover:bg-primary-900/30'
                     }`}
                   >
                     <div className={`relative flex items-center justify-center w-6 h-6 rounded-lg border-2 transition-all duration-300 ${
                       preferences.hasPartner
                         ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
-                        : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                        : 'bg-primary-900/40 border-primary-700/50 group-hover:border-primary-500/50'
                     }`}>
                       {preferences.hasPartner && (
                         <motion.div
@@ -339,10 +339,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     </div>
                     <div className="flex items-center space-x-3 flex-1">
                       <Heart className={`w-5 h-5 transition-colors ${
-                        preferences.hasPartner ? 'text-primary-400' : 'text-slate-500 group-hover:text-primary-500/70'
+                        preferences.hasPartner ? 'text-primary-400' : 'text-primary-500/60 group-hover:text-primary-500/80'
                       }`} />
                       <span className={`font-medium transition-colors ${
-                        preferences.hasPartner ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                        preferences.hasPartner ? 'text-white' : 'text-primary-200 group-hover:text-primary-100'
                       }`}>
                         I'm cooking for a partner/spouse
                       </span>
@@ -358,13 +358,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     className={`group relative flex items-center space-x-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                       preferences.hasKids
                         ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
-                        : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                        : 'bg-primary-900/20 border-primary-800/50 hover:border-primary-500/40 hover:bg-primary-900/30'
                     }`}
                   >
                     <div className={`relative flex items-center justify-center w-6 h-6 rounded-lg border-2 transition-all duration-300 ${
                       preferences.hasKids
                         ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
-                        : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                        : 'bg-primary-900/40 border-primary-700/50 group-hover:border-primary-500/50'
                     }`}>
                       {preferences.hasKids && (
                         <motion.div
@@ -378,10 +378,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     </div>
                     <div className="flex items-center space-x-3 flex-1">
                       <Baby className={`w-5 h-5 transition-colors ${
-                        preferences.hasKids ? 'text-primary-400' : 'text-slate-500 group-hover:text-primary-500/70'
+                        preferences.hasKids ? 'text-primary-400' : 'text-primary-500/60 group-hover:text-primary-500/80'
                       }`} />
                       <span className={`font-medium transition-colors ${
-                        preferences.hasKids ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                        preferences.hasKids ? 'text-white' : 'text-primary-200 group-hover:text-primary-100'
                       }`}>
                         I'm cooking for kids
                       </span>
@@ -396,7 +396,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 </div>
                 {preferences.hasKids && (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-primary-200 mb-2">
                       Kids' ages (comma-separated, e.g., "5, 8, 12")
                     </label>
                     <input
@@ -407,7 +407,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                         kidsAges: e.target.value.split(',').map(a => a.trim()).filter(a => a)
                       }))}
                       placeholder="e.g., 5, 8, 12"
-                      className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:border-primary-500 focus:outline-none"
+                      className="w-full px-4 py-3 rounded-xl bg-primary-900/30 border border-primary-800/50 text-white placeholder-primary-400 focus:border-primary-500 focus:outline-none"
                     />
                   </div>
                 )}
@@ -420,7 +420,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <div className="text-center">
                   <Heart className="w-12 h-12 text-primary-400 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-white mb-2">Any dietary restrictions?</h3>
-                  <p className="text-slate-400 text-sm">Select all that apply</p>
+                  <p className="text-primary-300 text-sm">Select all that apply</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {DIETARY_OPTIONS.map(option => (
@@ -429,13 +429,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                       className={`group relative flex items-center space-x-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                         preferences.dietaryRestrictions.includes(option)
                           ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
-                          : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                          : 'bg-primary-900/20 border-primary-800/50 hover:border-primary-500/40 hover:bg-primary-900/30'
                       }`}
                     >
                       <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 flex-shrink-0 ${
                         preferences.dietaryRestrictions.includes(option)
                           ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
-                          : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                          : 'bg-primary-900/40 border-primary-700/50 group-hover:border-primary-500/50'
                       }`}>
                         {preferences.dietaryRestrictions.includes(option) && (
                           <motion.div
@@ -448,7 +448,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                         )}
                       </div>
                       <span className={`text-sm font-medium transition-colors flex-1 ${
-                        preferences.dietaryRestrictions.includes(option) ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                        preferences.dietaryRestrictions.includes(option) ? 'text-white' : 'text-primary-200 group-hover:text-primary-100'
                       }`}>{option}</span>
                       <input
                         type="checkbox"
@@ -466,7 +466,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     onChange={(e) => setCustomDietary(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addCustomDietary()}
                     placeholder="Add custom dietary restriction..."
-                    className="flex-1 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:border-primary-500 focus:outline-none"
+                    className="flex-1 px-4 py-3 rounded-xl bg-primary-900/30 border border-primary-800/50 text-white placeholder-primary-400 focus:border-primary-500 focus:outline-none"
                   />
                   <button
                     onClick={addCustomDietary}
@@ -484,7 +484,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <div className="text-center">
                   <Target className="w-12 h-12 text-primary-400 mx-auto mb-4" />
                   <h3 className="text-xl font-medium text-white mb-2">What are your health goals?</h3>
-                  <p className="text-slate-400 text-sm">We'll tailor recipes to help you achieve them</p>
+                  <p className="text-primary-300 text-sm">We'll tailor recipes to help you achieve them</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {HEALTH_GOALS.map(goal => (
@@ -493,13 +493,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                       className={`group relative flex items-center space-x-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                         preferences.healthGoals?.includes(goal)
                           ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
-                          : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                          : 'bg-primary-900/20 border-primary-800/50 hover:border-primary-500/40 hover:bg-primary-900/30'
                       }`}
                     >
                       <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 flex-shrink-0 ${
                         preferences.healthGoals?.includes(goal)
                           ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
-                          : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                          : 'bg-primary-900/40 border-primary-700/50 group-hover:border-primary-500/50'
                       }`}>
                         {preferences.healthGoals?.includes(goal) && (
                           <motion.div
@@ -512,7 +512,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                         )}
                       </div>
                       <span className={`text-sm font-medium transition-colors flex-1 ${
-                        preferences.healthGoals?.includes(goal) ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                        preferences.healthGoals?.includes(goal) ? 'text-white' : 'text-primary-200 group-hover:text-primary-100'
                       }`}>{goal}</span>
                       <input
                         type="checkbox"
@@ -532,7 +532,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <div className="text-center">
                   <AlertCircle className="w-12 h-12 text-primary-400 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-white mb-2">Any allergies?</h3>
-                  <p className="text-slate-400 text-sm">Important for your safety</p>
+                  <p className="text-primary-300 text-sm">Important for your safety</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {ALLERGY_OPTIONS.map(allergy => (
@@ -541,13 +541,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                       className={`group relative flex items-center space-x-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                         preferences.allergies?.includes(allergy)
                           ? 'bg-gradient-to-br from-red-500/20 via-red-600/20 to-red-500/20 border-red-500/60 shadow-lg shadow-red-500/20'
-                          : 'bg-slate-800/40 border-slate-700/50 hover:border-red-500/40 hover:bg-slate-800/60'
+                          : 'bg-primary-900/20 border-primary-800/50 hover:border-red-500/40 hover:bg-primary-900/30'
                       }`}
                     >
                       <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 flex-shrink-0 ${
                         preferences.allergies?.includes(allergy)
                           ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-400 shadow-lg shadow-red-500/30'
-                          : 'bg-slate-800/60 border-slate-600 group-hover:border-red-500/50'
+                          : 'bg-primary-900/40 border-primary-700/50 group-hover:border-red-500/50'
                       }`}>
                         {preferences.allergies?.includes(allergy) && (
                           <motion.div
@@ -560,7 +560,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                         )}
                       </div>
                       <span className={`text-sm font-medium transition-colors flex-1 ${
-                        preferences.allergies?.includes(allergy) ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                        preferences.allergies?.includes(allergy) ? 'text-white' : 'text-primary-200 group-hover:text-primary-100'
                       }`}>{allergy}</span>
                       <input
                         type="checkbox"
@@ -578,7 +578,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     onChange={(e) => setCustomAllergy(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addCustomAllergy()}
                     placeholder="Add custom allergy..."
-                    className="flex-1 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:border-primary-500 focus:outline-none"
+                    className="flex-1 px-4 py-3 rounded-xl bg-primary-900/30 border border-primary-800/50 text-white placeholder-primary-400 focus:border-primary-500 focus:outline-none"
                   />
                   <button
                     onClick={addCustomAllergy}
@@ -603,7 +603,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <div className="text-center">
                   <ChefHat className="w-12 h-12 text-primary-400 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-white mb-2">What kitchen equipment do you have?</h3>
-                  <p className="text-slate-400 text-sm">We'll only suggest recipes you can make</p>
+                  <p className="text-primary-300 text-sm">We'll only suggest recipes you can make</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {KITCHEN_EQUIPMENT.map(equipment => (
@@ -612,13 +612,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                       className={`group relative flex items-start space-x-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                         preferences.kitchenEquipment?.includes(equipment.id)
                           ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
-                          : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                          : 'bg-primary-900/20 border-primary-800/50 hover:border-primary-500/40 hover:bg-primary-900/30'
                       }`}
                     >
                       <div className={`relative flex items-center justify-center w-5 h-5 rounded-lg border-2 transition-all duration-300 flex-shrink-0 mt-0.5 ${
                         preferences.kitchenEquipment?.includes(equipment.id)
                           ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
-                          : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                          : 'bg-primary-900/40 border-primary-700/50 group-hover:border-primary-500/50'
                       }`}>
                         {preferences.kitchenEquipment?.includes(equipment.id) && (
                           <motion.div
@@ -632,10 +632,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                       </div>
                       <div className="flex-1">
                         <span className={`text-sm font-medium block transition-colors ${
-                          preferences.kitchenEquipment?.includes(equipment.id) ? 'text-white' : 'text-slate-200 group-hover:text-slate-100'
+                          preferences.kitchenEquipment?.includes(equipment.id) ? 'text-white' : 'text-primary-200 group-hover:text-primary-100'
                         }`}>{equipment.label}</span>
                         <span className={`text-xs transition-colors ${
-                          preferences.kitchenEquipment?.includes(equipment.id) ? 'text-slate-300' : 'text-slate-400'
+                          preferences.kitchenEquipment?.includes(equipment.id) ? 'text-primary-200' : 'text-primary-400'
                         }`}>{equipment.description}</span>
                       </div>
                       <input
@@ -656,12 +656,12 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <div className="text-center">
                   <Check className="w-12 h-12 text-primary-400 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-white mb-2">Review Your Preferences</h3>
-                  <p className="text-slate-400 text-sm">Everything looks good?</p>
+                  <p className="text-primary-300 text-sm">Everything looks good?</p>
                 </div>
-                <div className="space-y-4 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+                <div className="space-y-4 p-6 bg-primary-900/30 rounded-xl border border-primary-800/50">
                   <div>
                     <strong className="text-primary-400">People:</strong>
-                    <span className="text-slate-200 ml-2">
+                    <span className="text-primary-100 ml-2">
                       {preferences.numberOfPeople} {preferences.numberOfPeople === 1 ? 'person' : 'people'}
                       {preferences.hasPartner && ' (with partner)'}
                       {preferences.hasKids && ` (with kids${preferences.kidsAges && preferences.kidsAges.length > 0 ? ` ages ${preferences.kidsAges.join(', ')}` : ''})`}
@@ -670,25 +670,25 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   {preferences.dietaryRestrictions.length > 0 && (
                     <div>
                       <strong className="text-primary-400">Dietary Restrictions:</strong>
-                      <span className="text-slate-200 ml-2">{preferences.dietaryRestrictions.join(', ')}</span>
+                      <span className="text-primary-100 ml-2">{preferences.dietaryRestrictions.join(', ')}</span>
                     </div>
                   )}
                   {preferences.allergies && preferences.allergies.length > 0 && (
                     <div>
                       <strong className="text-red-400">Allergies:</strong>
-                      <span className="text-slate-200 ml-2">{preferences.allergies.join(', ')}</span>
+                      <span className="text-primary-100 ml-2">{preferences.allergies.join(', ')}</span>
                     </div>
                   )}
                   {preferences.healthGoals && preferences.healthGoals.length > 0 && (
                     <div>
                       <strong className="text-primary-400">Health Goals:</strong>
-                      <span className="text-slate-200 ml-2">{preferences.healthGoals.join(', ')}</span>
+                      <span className="text-primary-100 ml-2">{preferences.healthGoals.join(', ')}</span>
                     </div>
                   )}
                   {preferences.kitchenEquipment && preferences.kitchenEquipment.length > 0 && (
                     <div>
                       <strong className="text-primary-400">Kitchen Equipment:</strong>
-                      <span className="text-slate-200 ml-2">
+                      <span className="text-primary-100 ml-2">
                         {preferences.kitchenEquipment.length} {preferences.kitchenEquipment.length === 1 ? 'item' : 'items'} selected
                       </span>
                     </div>
@@ -700,11 +700,11 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         </AnimatePresence>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-700/50">
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-primary-800/50">
           <button
             onClick={handleBack}
             disabled={step === 1}
-            className="flex items-center space-x-2 px-6 py-3 rounded-xl border border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center space-x-2 px-6 py-3 rounded-xl border border-primary-800/50 bg-primary-900/30 text-primary-200 hover:bg-primary-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
             <span>Back</span>
