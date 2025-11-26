@@ -704,7 +704,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className={`space-y-6 text-lg leading-relaxed transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              <div className={`space-y-6 text-lg leading-relaxed text-center transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <p>
                   I started cooking lunches for my family when I was just <strong className={`transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>9 years old</strong>. 
                   It became my responsibility, and I quickly learned how challenging it can be to create healthy, 
