@@ -16,7 +16,7 @@ export default function StoryPage() {
       {/* Navbar */}
       <nav className={`fixed top-0 left-0 right-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${isDark ? 'bg-slate-950/80 border-slate-800/50' : 'bg-white/80 border-slate-200/50'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
+          <div className="flex items-center h-16 sm:h-20">
             <button
               onClick={() => router.back()}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors duration-300 ${isDark ? 'text-slate-300 hover:text-white hover:bg-slate-800/50' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'}`}
@@ -24,10 +24,6 @@ export default function StoryPage() {
               <ArrowLeft className="w-5 h-5" />
               <span>Back</span>
             </button>
-            <h1 className={`text-xl sm:text-2xl md:text-3xl font-medium transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Our Story
-            </h1>
-            <div className="w-20"></div> {/* Spacer for centering */}
           </div>
         </div>
       </nav>
@@ -43,6 +39,12 @@ export default function StoryPage() {
             className={`flex-1 overflow-y-auto md:border-r transition-colors duration-300 ${isDark ? 'md:border-slate-800' : 'md:border-slate-200'}`}
           >
             <div className={`p-6 lg:p-12 space-y-8 text-lg sm:text-xl leading-relaxed transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              <div className="mb-8">
+                <h1 className={`text-4xl sm:text-5xl md:text-6xl font-medium mb-4 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Our Story
+                </h1>
+                <div className="w-24 h-1 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full"></div>
+              </div>
               <p>
                 I started cooking lunches for my family when I was just <strong className={`transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>9 years old</strong>. 
                 It became my responsibility, and I quickly learned how challenging it can be to create healthy, 
