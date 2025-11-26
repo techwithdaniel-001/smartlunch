@@ -1,24 +1,22 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Saved recipes collection - simplified approach
+    // Users collection with subcollections
+    match /users/{userId} {
+      // Users can only access their own user document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Saved recipes subcollection
+      match /savedRecipes/{recipeId} {
+        // Users can only access recipes in their own subcollection
+        // Since userId is in the path, we just need to check authentication
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Legacy savedRecipes collection (for migration - can be removed later)
     match /savedRecipes/{recipeId} {
-      // Users can read recipes that belong to them
-      allow read: if request.auth != null && 
-        (!resource.exists || resource.data.userId == request.auth.uid);
-      
-      // Users can create recipes with their userId
-      allow create: if request.auth != null && 
-        request.resource.data.userId == request.auth.uid;
-      
-      // Users can update their own recipes
-      allow update: if request.auth != null && 
-        resource.data.userId == request.auth.uid &&
-        request.resource.data.userId == request.auth.uid;
-      
-      // Users can delete their own recipes
-      allow delete: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
+      allow read, write: if false; // Disable legacy collection
     }
     
     // User preferences collection

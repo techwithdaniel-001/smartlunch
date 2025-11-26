@@ -15,7 +15,8 @@ import { db, auth } from './firebase'
 import { Recipe } from '@/data/recipes'
 import { MealPlan } from '@/data/mealPlans'
 
-const SAVED_RECIPES_COLLECTION = 'savedRecipes'
+// Use subcollection structure: users/{userId}/savedRecipes/{recipeId}
+// This makes security rules simpler and more reliable
 
 export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
   try {
@@ -29,37 +30,30 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
       throw new Error('User ID does not match authenticated user')
     }
     
-    // Use userId_recipeId as document ID to ensure uniqueness per user
-    const recipeRef = doc(db, SAVED_RECIPES_COLLECTION, `${userId}_${recipe.id}`)
+    // Use subcollection: users/{userId}/savedRecipes/{recipeId}
+    // This makes the userId part of the path, simplifying security rules
+    const recipeRef = doc(db, 'users', userId, 'savedRecipes', recipe.id)
     
     // Check if document exists to preserve savedAt timestamp
     const docSnap = await getDoc(recipeRef)
     const existingData = docSnap.exists() ? docSnap.data() : null
     
-    // Build the data object - ensure userId is FIRST and explicitly set
-    const recipeData: any = {
-      userId: currentUser.uid, // MUST be first and match auth.uid
+    // Build the data object - no need for userId field since it's in the path
+    const recipeData = {
       recipeId: recipe.id,
       recipe: recipe,
       savedAt: existingData?.savedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
     
-    // Double-check userId is set correctly
-    if (recipeData.userId !== currentUser.uid) {
-      recipeData.userId = currentUser.uid
-    }
-    
     // Debug: Log what we're trying to save
-    console.log('Saving recipe:', {
-      documentId: `${userId}_${recipe.id}`,
+    console.log('Saving recipe to subcollection:', {
+      path: `users/${userId}/savedRecipes/${recipe.id}`,
       authUid: currentUser.uid,
-      dataUserId: recipeData.userId,
-      match: recipeData.userId === currentUser.uid,
       recipeName: recipe.name
     })
     
-    // Use setDoc without merge - simpler and works better with rules
+    // Use setDoc without merge
     await setDoc(recipeRef, recipeData)
     
     console.log('Recipe saved successfully!')
@@ -90,7 +84,7 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
 
 export async function removeRecipeFromFirestore(userId: string, recipeId: string) {
   try {
-    const recipeRef = doc(db, SAVED_RECIPES_COLLECTION, `${userId}_${recipeId}`)
+    const recipeRef = doc(db, 'users', userId, 'savedRecipes', recipeId)
     await deleteDoc(recipeRef)
     return true
   } catch (error: any) {
@@ -112,12 +106,9 @@ export async function removeRecipeFromFirestore(userId: string, recipeId: string
 
 export async function getUserSavedRecipes(userId: string): Promise<Recipe[]> {
   try {
-    // Filter by userId to get only this user's recipes
-    const q = query(
-      collection(db, SAVED_RECIPES_COLLECTION),
-      where('userId', '==', userId)
-    )
-    const querySnapshot = await getDocs(q)
+    // Query subcollection: users/{userId}/savedRecipes
+    const savedRecipesRef = collection(db, 'users', userId, 'savedRecipes')
+    const querySnapshot = await getDocs(savedRecipesRef)
     
     // Create array with recipe and savedAt together for efficient sorting
     const recipesWithMetadata: Array<{ recipe: Recipe; savedAt: string }> = []
@@ -155,7 +146,7 @@ export async function getUserSavedRecipes(userId: string): Promise<Recipe[]> {
 
 export async function isRecipeSaved(userId: string, recipeId: string): Promise<boolean> {
   try {
-    const recipeRef = doc(db, SAVED_RECIPES_COLLECTION, `${userId}_${recipeId}`)
+    const recipeRef = doc(db, 'users', userId, 'savedRecipes', recipeId)
     const docSnap = await getDoc(recipeRef)
     return docSnap.exists()
   } catch (error) {
@@ -166,13 +157,12 @@ export async function isRecipeSaved(userId: string, recipeId: string): Promise<b
 
 export async function updateSavedRecipe(userId: string, recipe: Recipe) {
   try {
-    const recipeRef = doc(db, SAVED_RECIPES_COLLECTION, `${userId}_${recipe.id}`)
+    const recipeRef = doc(db, 'users', userId, 'savedRecipes', recipe.id)
     const docSnap = await getDoc(recipeRef)
     
     if (docSnap.exists()) {
       const data = docSnap.data()
       await setDoc(recipeRef, {
-        userId: userId,
         recipeId: recipe.id,
         recipe: recipe,
         savedAt: data.savedAt, // Keep original savedAt
