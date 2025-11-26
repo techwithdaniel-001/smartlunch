@@ -9,7 +9,6 @@ import RecipeDetail from '@/components/RecipeDetail'
 import { Recipe } from '@/data/recipes'
 import { getUserPreferences, getUserSavedRecipes, saveRecipeToFirestore, removeRecipeFromFirestore } from '@/lib/firestore'
 import Link from 'next/link'
-import Image from 'next/image'
 import { ArrowLeft } from 'lucide-react'
 
 export default function MealPlansPage() {
