@@ -110,11 +110,11 @@ function RecipeCard({ recipe, onClick, availableIngredients, isSaved, onSave, on
         )}
       </div>
 
-      <h3 className={`text-xl font-bold mb-2 group-hover:text-primary-400 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>
+      <h3 className={`text-lg font-semibold mb-2 group-hover:text-primary-400 transition-colors duration-300 leading-tight ${isDark ? 'text-slate-100' : 'text-black'}`}>
         {recipe.name}
       </h3>
       
-      <p className={`text-sm mb-4 line-clamp-2 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/70'}`}>
+      <p className={`text-sm mb-4 line-clamp-2 leading-relaxed transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/70'}`}>
         {recipe.description}
       </p>
 
