@@ -3,9 +3,12 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { Mail, Lock, User, LogIn, UserPlus, Loader2 } from 'lucide-react'
 
 export default function Auth() {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -44,9 +47,9 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
+    <div className={`min-h-screen flex items-center justify-center p-3 sm:p-4 transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-white'}`}>
       <div className="w-full max-w-md">
-        <div className="glass-effect rounded-2xl p-8 border-slate-800/80">
+        <div className={`rounded-xl sm:rounded-2xl p-5 sm:p-6 md:p-8 border transition-colors duration-300 ${isDark ? 'glass-effect border-slate-800/80' : 'bg-white border-slate-200 shadow-xl'}`}>
           {/* Logo/Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 mb-4 relative">
@@ -58,8 +61,8 @@ export default function Auth() {
                 priority
               />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Smart Lunch</h1>
-            <p className="text-slate-400">
+            <h1 className={`text-2xl sm:text-3xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>Smart Lunch</h1>
+            <p className={`transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               {isLogin ? 'Welcome back!' : 'Create your account'}
             </p>
           </div>
@@ -74,35 +77,35 @@ export default function Auth() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors duration-300 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full pl-10 pr-4 py-3 bg-slate-800/60 border border-slate-700/50 rounded-xl text-slate-100 placeholder-slate-500 focus:border-primary-500/50 focus:outline-none transition-colors"
+                  className={`w-full pl-10 pr-4 py-3 border rounded-xl placeholder-slate-500 focus:border-primary-500/50 focus:outline-none transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-100' : 'bg-white border-slate-300 text-slate-900'}`}
                   placeholder="your@email.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className={`block text-sm font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <Lock className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors duration-300 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-800/60 border border-slate-700/50 rounded-xl text-slate-100 placeholder-slate-500 focus:border-primary-500/50 focus:outline-none transition-colors"
+                  className={`w-full pl-10 pr-4 py-3 border rounded-xl placeholder-slate-500 focus:border-primary-500/50 focus:outline-none transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-100' : 'bg-white border-slate-300 text-slate-900'}`}
                   placeholder="••••••••"
                 />
               </div>
@@ -138,16 +141,16 @@ export default function Auth() {
 
           {/* Divider */}
           <div className="my-6 flex items-center">
-            <div className="flex-1 border-t border-slate-700/50"></div>
-            <span className="px-4 text-sm text-slate-500">or</span>
-            <div className="flex-1 border-t border-slate-700/50"></div>
+            <div className={`flex-1 border-t transition-colors duration-300 ${isDark ? 'border-slate-700/50' : 'border-slate-300'}`}></div>
+            <span className={`px-4 text-sm transition-colors duration-300 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>or</span>
+            <div className={`flex-1 border-t transition-colors duration-300 ${isDark ? 'border-slate-700/50' : 'border-slate-300'}`}></div>
           </div>
 
           {/* Google Sign In */}
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-slate-800/60 border border-slate-700/50 rounded-xl text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`w-full flex items-center justify-center space-x-2 px-4 py-3 border rounded-xl hover:border-primary-500/50 hover:bg-primary-500/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-300' : 'bg-white border-slate-300 text-slate-700'}`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -177,15 +180,15 @@ export default function Auth() {
                 setIsLogin(!isLogin)
                 setError('')
               }}
-              className="text-sm text-slate-400 hover:text-primary-400 transition-colors"
+              className={`text-sm transition-colors hover:text-primary-500 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}
             >
               {isLogin ? (
                 <>
-                  Don't have an account? <span className="text-primary-400 font-semibold">Sign up</span>
+                  Don't have an account? <span className="text-primary-500 font-semibold">Sign up</span>
                 </>
               ) : (
                 <>
-                  Already have an account? <span className="text-primary-400 font-semibold">Sign in</span>
+                  Already have an account? <span className="text-primary-500 font-semibold">Sign in</span>
                 </>
               )}
             </button>

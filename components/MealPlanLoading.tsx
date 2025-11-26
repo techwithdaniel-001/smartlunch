@@ -2,10 +2,10 @@
 
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { Sparkles, UtensilsCrossed, Zap } from 'lucide-react'
+import { Calendar, Sparkles, UtensilsCrossed, Zap } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 
-export default function RecipeLoading() {
+export default function MealPlanLoading() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
 
@@ -21,8 +21,8 @@ export default function RecipeLoading() {
         <div className="text-center mb-8">
           <motion.div
             animate={{
-              rotate: [0, 10, -10, 10, 0],
-              scale: [1, 1.1, 1, 1.1, 1],
+              rotate: [0, 5, -5, 5, 0],
+              scale: [1, 1.05, 1, 1.05, 1],
             }}
             transition={{
               duration: 2,
@@ -32,14 +32,8 @@ export default function RecipeLoading() {
             className="inline-flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 mb-6 relative"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-primary-500/30 via-primary-600/30 to-primary-500/30 rounded-full blur-2xl animate-pulse"></div>
-            <div className="relative w-full h-full">
-              <Image
-                src="/assets/smartlunchlogo.png"
-                alt="Smart Lunch Logo"
-                fill
-                className="object-contain"
-                priority
-              />
+            <div className={`relative z-10 p-4 rounded-2xl border-2 transition-colors duration-300 ${isDark ? 'bg-slate-800/50 border-primary-500/30' : 'bg-white border-primary-200'}`}>
+              <Calendar className="w-12 h-12 sm:w-16 sm:h-16 text-primary-500" />
             </div>
           </motion.div>
 
@@ -48,19 +42,19 @@ export default function RecipeLoading() {
             animate={{ opacity: 1, y: 0 }}
             className={`text-2xl sm:text-3xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}
           >
-            Creating Your Recipe
+            Creating Your Meal Plan
           </motion.h2>
           <p className={`text-sm sm:text-base transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Our AI chef is working their magic...
+            Planning your meals and generating recipes...
           </p>
         </div>
 
         {/* Animated Steps */}
         <div className="space-y-4 mb-8">
           {[
-            { icon: Sparkles, text: "Analyzing ingredients", delay: 0 },
-            { icon: UtensilsCrossed, text: "Crafting instructions", delay: 0.2 },
-            { icon: Zap, text: "Generating image", delay: 0.4 },
+            { icon: Sparkles, text: "Analyzing your preferences", delay: 0 },
+            { icon: UtensilsCrossed, text: "Planning meals for each day", delay: 0.2 },
+            { icon: Zap, text: "Generating recipes", delay: 0.4 },
           ].map((step, index) => (
             <motion.div
               key={index}
@@ -133,7 +127,7 @@ export default function RecipeLoading() {
           transition={{ duration: 2, repeat: Infinity }}
           className={`text-center text-xs sm:text-sm transition-colors duration-300 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}
         >
-          This usually takes 10-15 seconds...
+          This usually takes 15-20 seconds...
         </motion.p>
       </motion.div>
     </div>

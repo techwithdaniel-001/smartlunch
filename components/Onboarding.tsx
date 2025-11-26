@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronLeft, Users, Baby, Heart, AlertCircle, ChefHat, Check, CheckCircle2, Target } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Users, Baby, Heart, AlertCircle, ChefHat, Check, CheckCircle2, Target, Sun, Moon } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { saveUserPreferences, UserPreferences } from '@/lib/firestore'
 import Image from 'next/image'
 
@@ -54,6 +55,8 @@ const KITCHEN_EQUIPMENT = [
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
   const { user } = useAuth()
+  const { theme, setTheme } = useTheme()
+  const isDark = theme === 'dark'
   const [step, setStep] = useState(1)
   const [preferences, setPreferences] = useState<UserPreferences>({
     dietaryRestrictions: [],
@@ -64,13 +67,14 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     kidsAges: [],
     preferences: [],
     kitchenEquipment: [],
-    healthGoals: []
+    healthGoals: [],
+    theme: 'light'
   })
   const [customAllergy, setCustomAllergy] = useState('')
   const [customDietary, setCustomDietary] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const totalSteps = 6
+  const totalSteps = 7
 
   const HEALTH_GOALS = [
     'Eat more vegetables',
@@ -81,6 +85,11 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     'Energy boost',
     'Better nutrition for kids'
   ]
+
+  const handleThemeSelect = (selectedTheme: 'light' | 'dark') => {
+    setPreferences(prev => ({ ...prev, theme: selectedTheme }))
+    setTheme(selectedTheme)
+  }
 
   const handleNext = () => {
     if (step < totalSteps) {
@@ -171,11 +180,11 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-white'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="glass-effect rounded-3xl border border-primary-500/30 p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+        className={`rounded-2xl sm:rounded-3xl border border-primary-500/30 p-4 sm:p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transition-colors duration-300 ${isDark ? 'glass-effect' : 'bg-white'}`}
       >
         {/* Header */}
         <div className="text-center mb-6">
@@ -188,14 +197,14 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               priority
             />
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+          <h2 className={`text-2xl sm:text-3xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
             Welcome to Smart Lunch! 👋
           </h2>
-          <p className="text-slate-400 text-sm sm:text-base">
+          <p className={`text-sm sm:text-base transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Let's personalize your experience (Step {step} of {totalSteps})
           </p>
           {/* Progress Bar */}
-          <div className="mt-4 h-2 bg-slate-800/50 rounded-full overflow-hidden">
+          <div className={`mt-4 h-2 rounded-full overflow-hidden transition-colors duration-300 ${isDark ? 'bg-slate-800/50' : 'bg-slate-200'}`}>
             <motion.div
               className="h-full bg-gradient-to-r from-primary-500 via-primary-600 to-primary-500 rounded-full"
               initial={{ width: '0%' }}
@@ -214,8 +223,75 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Step 1: Number of People */}
+            {/* Step 1: Theme Selection */}
             {step === 1 && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  {preferences.theme === 'dark' ? (
+                    <Moon className="w-12 h-12 text-primary-400 mx-auto mb-4" />
+                  ) : (
+                    <Sun className="w-12 h-12 text-primary-400 mx-auto mb-4" />
+                  )}
+                  <h3 className="text-xl font-bold text-white mb-2">Choose Your Theme</h3>
+                  <p className="text-slate-400 text-sm">Pick a theme that's comfortable for you. You can change this anytime in settings.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handleThemeSelect('light')}
+                    className={`group relative flex flex-col items-center justify-center space-y-3 p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                      preferences.theme === 'light'
+                        ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
+                        : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className={`relative flex items-center justify-center w-8 h-8 rounded-lg border-2 transition-all duration-300 ${
+                      preferences.theme === 'light'
+                        ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
+                        : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                    }`}>
+                      {preferences.theme === 'light' && (
+                        <Check className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                    <Sun className="w-10 h-10 text-primary-400" />
+                    <span className={`text-base font-medium transition-colors ${
+                      preferences.theme === 'light' ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                    }`}>Light</span>
+                    <p className={`text-xs text-center transition-colors ${
+                      preferences.theme === 'light' ? 'text-slate-300' : 'text-slate-500 group-hover:text-slate-400'
+                    }`}>Clean and bright</p>
+                  </button>
+                  <button
+                    onClick={() => handleThemeSelect('dark')}
+                    className={`group relative flex flex-col items-center justify-center space-y-3 p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                      preferences.theme === 'dark'
+                        ? 'bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-primary-500/60 shadow-lg shadow-primary-500/20'
+                        : 'bg-slate-800/40 border-slate-700/50 hover:border-primary-500/40 hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className={`relative flex items-center justify-center w-8 h-8 rounded-lg border-2 transition-all duration-300 ${
+                      preferences.theme === 'dark'
+                        ? 'bg-gradient-to-br from-primary-500 to-primary-600 border-primary-400 shadow-lg shadow-primary-500/30'
+                        : 'bg-slate-800/60 border-slate-600 group-hover:border-primary-500/50'
+                    }`}>
+                      {preferences.theme === 'dark' && (
+                        <Check className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                    <Moon className="w-10 h-10 text-primary-400" />
+                    <span className={`text-base font-medium transition-colors ${
+                      preferences.theme === 'dark' ? 'text-white' : 'text-slate-300 group-hover:text-slate-200'
+                    }`}>Dark</span>
+                    <p className={`text-xs text-center transition-colors ${
+                      preferences.theme === 'dark' ? 'text-slate-300' : 'text-slate-500 group-hover:text-slate-400'
+                    }`}>Easy on the eyes</p>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Number of People */}
+            {step === 2 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <Users className="w-12 h-12 text-primary-400 mx-auto mb-4" />
@@ -338,8 +414,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
             )}
 
-            {/* Step 2: Dietary Restrictions */}
-            {step === 2 && (
+            {/* Step 3: Dietary Restrictions */}
+            {step === 3 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <Heart className="w-12 h-12 text-primary-400 mx-auto mb-4" />
@@ -402,8 +478,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
             )}
 
-            {/* Step 3: Health Goals */}
-            {step === 3 && (
+            {/* Step 4: Health Goals */}
+            {step === 4 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <Target className="w-12 h-12 text-primary-400 mx-auto mb-4" />
@@ -450,8 +526,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
             )}
 
-            {/* Step 4: Allergies */}
-            {step === 4 && (
+            {/* Step 5: Allergies */}
+            {step === 5 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <AlertCircle className="w-12 h-12 text-primary-400 mx-auto mb-4" />
@@ -521,8 +597,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
             )}
 
-            {/* Step 5: Kitchen Equipment */}
-            {step === 5 && (
+            {/* Step 6: Kitchen Equipment */}
+            {step === 6 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <ChefHat className="w-12 h-12 text-primary-400 mx-auto mb-4" />
@@ -574,8 +650,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
             )}
 
-            {/* Step 6: Review */}
-            {step === 6 && (
+            {/* Step 7: Review */}
+            {step === 7 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <Check className="w-12 h-12 text-primary-400 mx-auto mb-4" />

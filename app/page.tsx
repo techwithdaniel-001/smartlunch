@@ -30,7 +30,7 @@ export default function Home() {
               priority
             />
           </div>
-          <p className="text-slate-400">Loading...</p>
+          <p className="text-black/70">Loading...</p>
         </div>
       </div>
     )

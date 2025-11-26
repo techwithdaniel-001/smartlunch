@@ -188,7 +188,7 @@ export default function RecipePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-white transition-colors duration-300">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 relative animate-pulse">
             <Image
@@ -199,7 +199,7 @@ export default function RecipePage() {
               priority
             />
           </div>
-          <p className="text-slate-400">Loading...</p>
+          <p className="text-slate-600 transition-colors duration-300">Loading...</p>
         </div>
       </div>
     )
@@ -211,7 +211,7 @@ export default function RecipePage() {
 
   if (!recipe) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-white transition-colors duration-300">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 relative animate-pulse">
             <Image
@@ -222,7 +222,7 @@ export default function RecipePage() {
               priority
             />
           </div>
-          <p className="text-slate-400">Loading recipe...</p>
+          <p className="text-slate-600 transition-colors duration-300">Loading recipe...</p>
         </div>
       </div>
     )

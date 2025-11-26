@@ -5,6 +5,7 @@ import { Send, Bot, User, Sparkles, X, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { Recipe } from '@/data/recipes'
 import { playRecipeCompleteSound } from '@/lib/sounds'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -23,6 +24,8 @@ interface AIChatProps {
 }
 
 export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngredients = [], userPreferences, onClose, removedIngredients = [], autoSendMessage }: AIChatProps) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -121,6 +124,7 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
           if (data.recipe && onRecipeGenerated) {
             // Play success sound when recipe is generated
             playRecipeCompleteSound()
+            // Update the recipe - this will trigger the notification in RecipeDetail
             onRecipeGenerated(data.recipe)
           }
         })
@@ -155,7 +159,7 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
   }
 
   return (
-    <div className="flex flex-col h-full border-slate-800/80">
+    <div className={`flex flex-col h-full transition-colors duration-300 ${isDark ? 'border-slate-800/80' : 'border-primary-200'}`}>
       <div className="bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 p-5 flex items-center justify-between premium-glow border-b border-primary-600/50">
         <div className="flex items-center space-x-2">
           <Sparkles className="w-5 h-5 text-white" />
@@ -171,7 +175,7 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/50">
+      <div className={`flex-1 overflow-y-auto p-4 space-y-4 transition-colors duration-300 ${isDark ? 'bg-slate-900/50' : 'bg-white'}`}>
         {messages.map((message, index) => (
           <div
             key={index}
@@ -200,18 +204,22 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
               )}
             </div>
             <div
-              className={`flex-1 rounded-xl p-4 ${
+              className={`flex-1 rounded-xl p-4 transition-colors duration-300 ${
                 message.role === 'user'
-                  ? 'bg-primary-500/20 border border-primary-500/30 text-slate-100'
-                  : 'bg-slate-800/60 border border-slate-700/50 text-slate-200'
+                  ? isDark
+                    ? 'bg-primary-500/20 border border-primary-500/30 text-slate-100'
+                    : 'bg-primary-50 border border-primary-200 text-black'
+                  : isDark
+                  ? 'bg-slate-800/60 border border-slate-700/50 text-slate-200'
+                  : 'bg-white border border-primary-200 text-black'
               }`}
             >
               <div className="whitespace-pre-wrap">{message.content}</div>
               {message.recipe && (
-                <div className="mt-3 pt-3 border-t border-slate-700">
-                  <p className="text-sm font-semibold mb-2 text-primary-400">✨ Generated Recipe:</p>
-                  <p className="font-bold text-lg text-slate-100">{message.recipe.name}</p>
-                  <p className="text-sm text-slate-400 mt-1">{message.recipe.description}</p>
+                <div className={`mt-3 pt-3 border-t transition-colors duration-300 ${isDark ? 'border-slate-700' : 'border-primary-200'}`}>
+                  <p className={`text-sm font-semibold mb-2 transition-colors duration-300 ${isDark ? 'text-primary-400' : 'text-primary-600'}`}>✨ Generated Recipe:</p>
+                  <p className={`font-bold text-lg transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>{message.recipe.name}</p>
+                  <p className={`text-sm mt-1 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/70'}`}>{message.recipe.description}</p>
                 </div>
               )}
             </div>
@@ -229,22 +237,26 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
                 />
               </div>
             </div>
-            <div className="flex-1 rounded-xl p-4 bg-slate-800/60 border border-slate-700/50">
-              <Loader2 className="w-5 h-5 animate-spin text-primary-400" />
+            <div className={`flex-1 rounded-xl p-4 transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border border-slate-700/50' : 'bg-white border border-primary-200'}`}>
+              <Loader2 className={`w-5 h-5 animate-spin transition-colors duration-300 ${isDark ? 'text-primary-400' : 'text-primary-600'}`} />
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t border-slate-800/50 p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div className={`border-t p-4 backdrop-blur-sm transition-colors duration-300 ${isDark ? 'border-slate-800/50 bg-slate-900/60' : 'border-primary-200 bg-white'}`}>
         <div className="flex items-end space-x-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Ask for a recipe, modify ingredients, or get cooking tips..."
-            className="flex-1 px-4 py-3 rounded-xl bg-slate-800/60 border-2 border-slate-700/50 text-slate-100 placeholder-slate-500 focus:border-primary-500/50 focus:outline-none resize-none min-h-[60px] max-h-[120px] backdrop-blur-sm"
+            className={`flex-1 px-4 py-3 rounded-xl border-2 focus:border-primary-500/50 focus:outline-none resize-none min-h-[60px] max-h-[120px] backdrop-blur-sm transition-colors duration-300 ${
+              isDark
+                ? 'bg-slate-800/60 border-slate-700/50 text-slate-100 placeholder-slate-500'
+                : 'bg-white border-primary-200 text-black placeholder-black/40'
+            }`}
             rows={2}
           />
           <button
@@ -255,7 +267,7 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
             <Send className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-xs text-slate-400 mt-2">
+        <p className={`text-xs mt-2 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>
           Press Enter to send, Shift+Enter for new line
         </p>
       </div>

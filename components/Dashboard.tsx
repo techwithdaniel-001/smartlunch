@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useRef, useMemo, useCallback } from 'react'
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { AnimatePresence } from 'framer-motion'
-import { BookmarkCheck, Plus, Search, Sparkles, X, MessageSquare, User, Send, Loader2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { BookmarkCheck, Plus, Search, Sparkles, X, User, Send, Loader2, Calendar } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import RecipeCard from './RecipeCard'
 import RecipeSearch from './RecipeSearch'
 import RecipeLoading from './RecipeLoading'
+import MealPlanLoading from './MealPlanLoading'
 import { Recipe } from '@/data/recipes'
 import { playRecipeCompleteSound } from '@/lib/sounds'
 
@@ -26,6 +28,7 @@ interface DashboardProps {
   userPreferences?: any
   onPreferencesUpdated?: () => void
   onRecipeGenerated: (recipe: Recipe) => void
+  onMealPlanCreated?: () => void
 }
 
 export default function Dashboard({
@@ -40,13 +43,32 @@ export default function Dashboard({
   onIngredientsChange,
   userPreferences,
   onPreferencesUpdated,
-  onRecipeGenerated
+  onRecipeGenerated,
+  onMealPlanCreated
 }: DashboardProps) {
   const router = useRouter()
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const [showRecipeSearch, setShowRecipeSearch] = useState(false)
   const [aiInput, setAiInput] = useState('')
   const [isAiLoading, setIsAiLoading] = useState(false)
+  const [mealPlanDuration, setMealPlanDuration] = useState<'day' | 'week' | 'month' | null>(null)
+  const [creatingMealPlan, setCreatingMealPlan] = useState(false)
+  const [isCreatingMealPlan, setIsCreatingMealPlan] = useState(false)
+  
+  // Check for meal plan query parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const mealPlan = params.get('mealPlan')
+      if (mealPlan && ['day', 'week', 'month'].includes(mealPlan)) {
+        setMealPlanDuration(mealPlan as 'day' | 'week' | 'month')
+        // Clear the query parameter
+        router.replace('/dashboard', { scroll: false })
+      }
+    }
+  }, [router])
   
   const getUserName = useMemo(() => {
     if (!user) return 'there'
@@ -55,11 +77,125 @@ export default function Dashboard({
     return 'there'
   }, [user])
 
+  const detectMealPlanRequest = (query: string): { isMealPlan: boolean; duration?: 'day' | 'week' | 'month' } => {
+    const lowerQuery = query.toLowerCase()
+    const mealPlanKeywords = ['meal plan', 'meal planning', 'plan meals', 'weekly meal', 'monthly meal', 'daily meal', 'meal prep']
+    const isMealPlan = mealPlanKeywords.some(keyword => lowerQuery.includes(keyword))
+    
+    if (!isMealPlan) return { isMealPlan: false }
+    
+    // Detect duration
+    if (lowerQuery.includes('month') || lowerQuery.includes('monthly')) {
+      return { isMealPlan: true, duration: 'month' }
+    } else if (lowerQuery.includes('week') || lowerQuery.includes('weekly')) {
+      return { isMealPlan: true, duration: 'week' }
+    } else if (lowerQuery.includes('day') || lowerQuery.includes('daily')) {
+      return { isMealPlan: true, duration: 'day' }
+    }
+    
+    return { isMealPlan: true, duration: 'week' }
+  }
+
   const handleAiSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!aiInput.trim() || isAiLoading) return
 
     const query = aiInput.trim()
+    const mealPlanCheck = detectMealPlanRequest(query)
+    
+    // If it's a meal plan request or we have a meal plan duration set, create meal plan
+    const duration = mealPlanDuration || mealPlanCheck.duration || 'week'
+    if (mealPlanCheck.isMealPlan || mealPlanDuration) {
+      setCreatingMealPlan(true)
+      setIsCreatingMealPlan(true)
+      setAiInput('')
+      
+      try {
+        const response = await fetch('/api/ai-meal-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            duration,
+            userPreferences: {
+              ...userPreferences,
+              mealPlanQuery: query, // Pass the user's query to customize the meal plan
+            },
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }))
+          console.error('API error:', errorData)
+          alert(`Failed to create meal plan: ${errorData.error || 'Unknown error'}`)
+          setIsCreatingMealPlan(false)
+          setCreatingMealPlan(false)
+          setMealPlanDuration(null)
+          return
+        }
+
+        const data = await response.json()
+        if (data.error) {
+          console.error('API returned error:', data.error)
+          alert(`Failed to create meal plan: ${data.error}`)
+          setIsCreatingMealPlan(false)
+          setCreatingMealPlan(false)
+          setMealPlanDuration(null)
+          return
+        }
+
+        if (data.mealPlan) {
+          const mealPlan = {
+            ...data.mealPlan,
+            userId: user?.uid || '',
+            name: query || `${duration.charAt(0).toUpperCase() + duration.slice(1)} Meal Plan`,
+          }
+          
+          // Store in sessionStorage so it can be viewed even if save fails
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`mealPlan-${mealPlan.id}`, JSON.stringify(mealPlan))
+            sessionStorage.setItem('tempMealPlanId', mealPlan.id)
+          }
+          
+          // Try to save, but don't block navigation if it fails
+          try {
+            const { saveMealPlanToFirestore } = await import('@/lib/firestore')
+            await saveMealPlanToFirestore(user?.uid || '', mealPlan)
+            // Clear temp flag if save succeeds
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem('tempMealPlanId')
+            }
+          } catch (saveError: any) {
+            console.error('Error saving meal plan to Firestore:', saveError)
+            // Don't show alert, just log - user can still see the meal plan
+            // Set a flag to show a warning on the meal plan page
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('mealPlanSaveFailed', 'true')
+            }
+          }
+          
+          setMealPlanDuration(null)
+          setIsCreatingMealPlan(false)
+          setCreatingMealPlan(false)
+          // Navigate to meal plan detail view regardless of save status
+          router.push(`/meal-plans?id=${mealPlan.id}`)
+        } else {
+          console.error('No meal plan in response:', data)
+          alert('Failed to create meal plan: No meal plan data received')
+          setIsCreatingMealPlan(false)
+          setCreatingMealPlan(false)
+          setMealPlanDuration(null)
+        }
+      } catch (error: any) {
+        console.error('Error creating meal plan:', error)
+        alert(`Failed to create meal plan: ${error?.message || 'Please try again.'}`)
+        setIsCreatingMealPlan(false)
+        setCreatingMealPlan(false)
+        setMealPlanDuration(null)
+      }
+      return
+    }
+
+    // Otherwise, generate a recipe
     setAiInput('')
     setIsAiLoading(true)
 
@@ -104,11 +240,12 @@ export default function Dashboard({
     }
   }
 
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative">
+    <div className={`min-h-screen relative transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-white'}`}>
       {/* Header */}
       <header className="fixed top-2 sm:top-4 left-1/2 transform -translate-x-1/2 z-50 w-[95%] sm:w-[90%] max-w-7xl floating-nav">
-        <div className="glass-effect rounded-xl sm:rounded-2xl border border-slate-800/50 backdrop-blur-xl shadow-2xl hover:shadow-[0_8px_40px_rgba(16,185,129,0.15)] transition-shadow duration-300">
+        <div className={`rounded-xl sm:rounded-2xl border backdrop-blur-xl transition-all duration-300 ${isDark ? 'glass-effect border-slate-800/20' : 'bg-white border-primary-200/50'}`}>
           <div className="px-3 sm:px-6 py-3 sm:py-4">
             <div className="flex items-center justify-between gap-2 sm:gap-4">
               <Link href="/dashboard" className="flex items-center space-x-2 sm:space-x-3 min-w-0">
@@ -129,8 +266,15 @@ export default function Dashboard({
               </Link>
               <div className="flex items-center space-x-2">
                 <Link
+                  href="/meal-plans"
+                  className={`flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-semibold transition-all duration-300 border hover:border-primary-500/50 hover:bg-primary-500/10 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-200' : 'bg-white border-primary-200 text-black'}`}
+                >
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Meal Plans</span>
+                </Link>
+                <Link
                   href="/saved"
-                  className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-semibold transition-all duration-300 bg-slate-800/60 border border-slate-700/50 text-slate-200 hover:border-primary-500/50 hover:bg-primary-500/10"
+                  className={`flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-semibold transition-all duration-300 border hover:border-primary-500/50 hover:bg-primary-500/10 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-200' : 'bg-white border-primary-200 text-black'}`}
                 >
                   <BookmarkCheck className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">Saved</span>
@@ -157,40 +301,41 @@ export default function Dashboard({
       <div className="h-20 sm:h-24"></div>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         {/* Personalized Greeting & AI Input */}
         <div className="mb-8 sm:mb-12">
           <div className="mb-6 sm:mb-8 text-center sm:text-left">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium text-white mb-3 leading-tight">
+            <h2 className={`text-3xl sm:text-4xl md:text-5xl font-medium mb-3 leading-tight transition-colors duration-300 ${isDark ? 'text-white' : 'text-black'}`}>
               Hey {getUserName}! 👋
             </h2>
-            <p className="text-slate-200 text-lg sm:text-xl font-medium">
+            <p className={`text-lg sm:text-xl font-medium transition-colors duration-300 ${isDark ? 'text-slate-200' : 'text-black/80'}`}>
               What would you like to make today?
             </p>
           </div>
 
           {/* AI Input Field - Enhanced Design */}
-          <form onSubmit={handleAiSubmit} className="relative group">
-            {/* Animated gradient border */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-500 rounded-3xl opacity-20 group-hover:opacity-30 blur-xl transition-opacity duration-300"></div>
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary-500/10 via-primary-600/10 to-primary-500/10 rounded-3xl blur-2xl"></div>
-            
-            <div className="relative glass-effect rounded-3xl border border-primary-500/20 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-              {/* Header with icon */}
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-primary-500/30 rounded-xl blur-lg"></div>
-                  <div className="relative bg-gradient-to-br from-primary-500/30 via-primary-600/30 to-primary-500/30 p-3 rounded-xl border border-primary-500/40">
-                    <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-primary-300" />
+          <form onSubmit={handleAiSubmit} className="relative" id="ai-input">
+            <div className={`relative rounded-2xl sm:rounded-3xl border p-4 sm:p-6 md:p-8 backdrop-blur-xl transition-colors duration-300 ${isDark ? 'glass-effect border-slate-800/20' : 'bg-white border-primary-200/50'}`}>
+              {/* Meal Plan Duration Pill - Above textarea */}
+              {mealPlanDuration && (
+                <div className="mb-4 flex items-center justify-center">
+                  <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-primary-500/20 border border-primary-500/50 shadow-sm">
+                    <Calendar className="w-4 h-4 text-primary-500" />
+                    <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                      {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)} Meal Plan
+                    </span>
+                    <button
+                      onClick={() => setMealPlanDuration(null)}
+                      className="ml-2 hover:bg-primary-500/30 rounded-full p-1 transition-colors"
+                      type="button"
+                    >
+                      <X className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" />
+                    </button>
                   </div>
                 </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-medium text-white">AI Recipe Generator</h3>
-                </div>
-              </div>
-
+              )}
               {/* Input field */}
-              <div className="relative mb-4">
+              <div className="relative">
                 <textarea
                   value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
@@ -200,50 +345,50 @@ export default function Dashboard({
                       handleAiSubmit()
                     }
                   }}
-                  placeholder="Describe what you'd like to make... e.g., 'quick pasta for kids' or 'healthy wraps with chicken'"
-                  className="w-full bg-slate-800/70 border-2 border-slate-700/50 rounded-2xl px-5 py-4 sm:py-5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/70 resize-none transition-all text-base sm:text-lg leading-relaxed"
-                  rows={4}
+                  placeholder={mealPlanDuration 
+                    ? `Describe your ${mealPlanDuration} meal plan... e.g., 'healthy lunches', 'high protein meals', 'kid-friendly dinners'`
+                    : "Describe what you'd like to make... e.g., 'quick pasta for kids', 'healthy wraps with chicken', or 'create a week meal plan for healthy lunches'"
+                  }
+                  className={`w-full border-2 rounded-2xl px-4 py-3 sm:px-5 sm:py-4 md:py-5 pb-20 sm:pb-24 md:pb-28 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/70 resize-none transition-all text-sm sm:text-base md:text-lg leading-relaxed ${isDark ? 'bg-slate-800/70 border-slate-700/50 text-white placeholder-slate-500' : 'bg-white border-primary-200 text-black placeholder-black/40'}`}
+                  rows={3}
                   disabled={isAiLoading}
                 />
-                {aiInput && (
-                  <div className="absolute bottom-3 right-3 text-xs text-slate-500">
-                    {aiInput.length} characters
+                {/* Bottom section with shortcuts and button */}
+                <div className="absolute bottom-3 sm:bottom-4 md:bottom-5 left-3 sm:left-4 md:left-5 right-3 sm:right-4 md:right-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                  {/* Keyboard shortcuts - hidden on very small screens */}
+                  <div className={`hidden xs:flex items-center space-x-1.5 sm:space-x-2 text-[10px] sm:text-xs transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/50'}`}>
+                    <div className="flex items-center space-x-1">
+                      <kbd className={`px-1 sm:px-1.5 py-0.5 border rounded font-mono text-[10px] sm:text-xs transition-colors duration-300 ${isDark ? 'bg-slate-800/50 border-slate-700/50 text-slate-300' : 'bg-white border-primary-200 text-black'}`}>Enter</kbd>
+                      <span className="hidden sm:inline">to send</span>
+                    </div>
+                    <span className="hidden sm:inline">•</span>
+                    <div className="hidden sm:flex items-center space-x-1">
+                      <kbd className={`px-1 sm:px-1.5 py-0.5 border rounded font-mono text-[10px] sm:text-xs transition-colors duration-300 ${isDark ? 'bg-slate-800/50 border-slate-700/50 text-slate-300' : 'bg-white border-primary-200 text-black'}`}>Shift</kbd>
+                      <span>+</span>
+                      <kbd className={`px-1 sm:px-1.5 py-0.5 border rounded font-mono text-[10px] sm:text-xs transition-colors duration-300 ${isDark ? 'bg-slate-800/50 border-slate-700/50 text-slate-300' : 'bg-white border-primary-200 text-black'}`}>Enter</kbd>
+                      <span>for new line</span>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* Footer with button and hint */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pt-2 border-t border-slate-700/50">
-                <div className="flex items-center space-x-2 text-xs sm:text-sm text-slate-400">
-                  <div className="flex items-center space-x-1">
-                    <kbd className="px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded text-slate-300 font-mono text-xs">Enter</kbd>
-                    <span className="text-slate-500">to send</span>
-                  </div>
-                  <span className="text-slate-600">•</span>
-                  <div className="flex items-center space-x-1">
-                    <kbd className="px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded text-slate-300 font-mono text-xs">Shift</kbd>
-                    <span className="text-slate-500">+</span>
-                    <kbd className="px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded text-slate-300 font-mono text-xs">Enter</kbd>
-                    <span className="text-slate-500">for new line</span>
-                  </div>
+                  {/* Generate button - full width on mobile */}
+                  <button
+                    type="submit"
+                    disabled={!aiInput.trim() || isAiLoading}
+                    className="btn-primary w-full sm:w-auto flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 active:scale-95 touch-manipulation"
+                  >
+                    {isAiLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                        <span className="hidden sm:inline">Creating...</span>
+                        <span className="sm:hidden">Creating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span>Generate Recipe</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="submit"
-                  disabled={!aiInput.trim() || isAiLoading}
-                  className="btn-primary flex items-center space-x-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 active:scale-95 w-full sm:w-auto justify-center"
-                >
-                  {isAiLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Creating Recipe...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-5 h-5" />
-                      <span>Generate Recipe</span>
-                    </>
-                  )}
-                </button>
               </div>
             </div>
           </form>
@@ -252,8 +397,8 @@ export default function Dashboard({
         {/* Saved Recipes Section */}
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center space-x-3 mb-4">
-            <div className="h-1 w-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full"></div>
-            <h3 className="text-xl sm:text-2xl md:text-3xl font-medium text-white">
+            <BookmarkCheck className={`w-6 h-6 sm:w-7 sm:h-7 transition-colors duration-300 ${isDark ? 'text-primary-400' : 'text-primary-500'}`} />
+            <h3 className={`text-xl sm:text-2xl md:text-3xl font-medium transition-colors duration-300 ${isDark ? 'text-white' : 'text-black'}`}>
               Saved Recipes ({savedRecipes.length})
             </h3>
           </div>
@@ -263,16 +408,16 @@ export default function Dashboard({
               <div className="inline-block mb-4">
                 <div className="w-16 h-16 border-4 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
               </div>
-              <p className="text-slate-200">Loading your saved recipes...</p>
+              <p className={`transition-colors duration-300 ${isDark ? 'text-slate-200' : 'text-black/80'}`}>Loading your saved recipes...</p>
             </div>
           ) : savedRecipes.length === 0 ? (
-            <div className="text-center py-12 glass-effect rounded-2xl border-slate-800/80">
+            <div className={`text-center py-12 rounded-2xl border transition-colors duration-300 ${isDark ? 'glass-effect border-slate-800/20' : 'bg-white border-primary-200/50'}`}>
               <div className="relative inline-block mb-4">
                 <div className="absolute inset-0 bg-primary-500/20 rounded-full blur-2xl"></div>
                 <BookmarkCheck className="w-16 h-16 text-primary-400 relative z-10" />
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">No saved recipes yet</h3>
-              <p className="text-slate-200 mb-6">Save recipes by clicking the bookmark icon</p>
+              <h3 className={`text-lg font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-black'}`}>No saved recipes yet</h3>
+              <p className={`mb-6 transition-colors duration-300 ${isDark ? 'text-slate-200' : 'text-black/80'}`}>Save recipes by clicking the bookmark icon</p>
               <button
                 onClick={() => setShowRecipeSearch(true)}
                 className="btn-primary"
@@ -301,8 +446,10 @@ export default function Dashboard({
 
       {/* Recipe Loading Overlay */}
       <AnimatePresence>
-        {isAiLoading && <RecipeLoading />}
+        {isAiLoading && !isCreatingMealPlan && <RecipeLoading />}
+        {isCreatingMealPlan && <MealPlanLoading />}
       </AnimatePresence>
+
     </div>
   )
 }

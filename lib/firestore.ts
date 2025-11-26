@@ -8,10 +8,12 @@ import {
   query, 
   where, 
   getDocs,
-  writeBatch
+  writeBatch,
+  orderBy
 } from 'firebase/firestore'
 import { db, auth } from './firebase'
 import { Recipe } from '@/data/recipes'
+import { MealPlan } from '@/data/mealPlans'
 
 const SAVED_RECIPES_COLLECTION = 'savedRecipes'
 
@@ -180,6 +182,7 @@ export interface UserPreferences {
   kitchenEquipment?: string[]
   healthGoals?: string[]
   onboardingCompleted?: boolean
+  theme?: 'light' | 'dark'
 }
 
 const USER_PREFERENCES_COLLECTION = 'userPreferences'
@@ -210,6 +213,109 @@ export async function saveUserPreferences(userId: string, preferences: UserPrefe
   } catch (error) {
     console.error('Error saving user preferences:', error)
     throw error
+  }
+}
+
+// Meal Plans
+const MEAL_PLANS_COLLECTION = 'mealPlans'
+
+export async function saveMealPlanToFirestore(userId: string, mealPlan: MealPlan) {
+  try {
+    const currentUser = auth.currentUser
+    if (!currentUser) {
+      throw new Error('User is not authenticated')
+    }
+    
+    if (currentUser.uid !== userId) {
+      throw new Error('User ID does not match authenticated user')
+    }
+    
+    const mealPlanRef = doc(db, MEAL_PLANS_COLLECTION, mealPlan.id)
+    
+    // Check if document exists
+    const docSnap = await getDoc(mealPlanRef)
+    const exists = docSnap.exists()
+    
+    // Ensure userId is explicitly set to current user's uid
+    const mealPlanData = {
+      ...mealPlan,
+      userId: currentUser.uid,
+      updatedAt: new Date().toISOString(),
+    }
+    
+    // Explicitly set userId to ensure it matches
+    mealPlanData.userId = currentUser.uid
+    
+    if (exists) {
+      // Update existing document
+      await updateDoc(mealPlanRef, mealPlanData)
+    } else {
+      // Create new document
+      await setDoc(mealPlanRef, {
+        ...mealPlanData,
+        createdAt: mealPlan.createdAt || new Date().toISOString(),
+      })
+    }
+    
+    return true
+  } catch (error: any) {
+    console.error('Error saving meal plan to Firestore:', error)
+    console.error('Meal plan data:', { id: mealPlan.id, userId, currentUserId: auth.currentUser?.uid })
+    if (error?.code === 'permission-denied') {
+      throw new Error('Permission denied. Please check Firestore security rules are deployed.')
+    }
+    throw new Error(error?.message || 'Failed to save meal plan.')
+  }
+}
+
+export async function getUserMealPlans(userId: string): Promise<MealPlan[]> {
+  try {
+    const q = query(
+      collection(db, MEAL_PLANS_COLLECTION),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    )
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.docs.map(doc => doc.data() as MealPlan)
+  } catch (error) {
+    console.error('Error fetching meal plans:', error)
+    throw error
+  }
+}
+
+export async function removeMealPlanFromFirestore(userId: string, mealPlanId: string) {
+  try {
+    const mealPlanRef = doc(db, MEAL_PLANS_COLLECTION, mealPlanId)
+    await deleteDoc(mealPlanRef)
+    return true
+  } catch (error: any) {
+    console.error('Error removing meal plan from Firestore:', error)
+    if (error?.code === 'permission-denied') {
+      throw new Error('Permission denied. Please check Firestore security rules are deployed.')
+    }
+    throw new Error(error?.message || 'Failed to remove meal plan.')
+  }
+}
+
+export async function updateMealPlan(userId: string, mealPlanId: string, updates: Partial<MealPlan>) {
+  try {
+    const currentUser = auth.currentUser
+    if (!currentUser || currentUser.uid !== userId) {
+      throw new Error('User is not authenticated')
+    }
+    
+    const mealPlanRef = doc(db, MEAL_PLANS_COLLECTION, mealPlanId)
+    await updateDoc(mealPlanRef, {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    })
+    return true
+  } catch (error: any) {
+    console.error('Error updating meal plan:', error)
+    if (error?.code === 'permission-denied') {
+      throw new Error('Permission denied. Please check Firestore security rules are deployed.')
+    }
+    throw new Error(error?.message || 'Failed to update meal plan.')
   }
 }
 

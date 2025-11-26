@@ -6,6 +6,7 @@ import { ArrowLeft, Clock, Users, ChefHat, Sparkles, CheckCircle2, XCircle, Star
 import { Recipe } from '@/data/recipes'
 import { motion, AnimatePresence } from 'framer-motion'
 import AIChat from './AIChat'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface RecipeDetailProps {
   recipe: Recipe
@@ -21,6 +22,8 @@ interface RecipeDetailProps {
 }
 
 export default function RecipeDetail({ recipe, onBack, availableIngredients, onRecipeUpdated, showAIChat: externalShowAIChat, setShowAIChat: externalSetShowAIChat, isSaved, onSave, onUnsave, userPreferences }: RecipeDetailProps) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const [currentStep, setCurrentStep] = useState(0)
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
   const [currentRecipe, setCurrentRecipe] = useState<Recipe>(recipe)
@@ -48,6 +51,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
   const [timerPickerStep, setTimerPickerStep] = useState<string | null>(null)
   const [showAIHelpPopup, setShowAIHelpPopup] = useState(false)
   const [hasSeenAIHelp, setHasSeenAIHelp] = useState(false)
+  const [recipeUpdateNotification, setRecipeUpdateNotification] = useState<{ show: boolean; message: string }>({ show: false, message: '' })
   const cookingStepsRef = useRef<HTMLDivElement>(null)
 
   const toggleStep = (stepIndex: number) => {
@@ -486,6 +490,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
   }
 
   const handleRecipeUpdated = (updatedRecipe: Recipe) => {
+    const wasInCookingMode = cookingMode
     setCurrentRecipe(updatedRecipe)
     // Exit cooking mode when recipe is updated so user can start fresh
     setCookingMode(false)
@@ -497,8 +502,33 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
     if (onRecipeUpdated) {
       onRecipeUpdated(updatedRecipe)
     }
-    // Only close on mobile (when onClose is provided), keep open on desktop since sidebar is always visible
-    if (externalSetShowAIChat && window.innerWidth < 1024) {
+    
+    // Show notification that recipe was updated
+    if (wasInCookingMode) {
+      setRecipeUpdateNotification({
+        show: true,
+        message: '✨ Recipe updated! Cooking mode has been reset. Click "Start Cooking" to begin with the new recipe.'
+      })
+      // Auto-hide notification after 8 seconds
+      setTimeout(() => {
+        setRecipeUpdateNotification({ show: false, message: '' })
+      }, 8000)
+    } else {
+      setRecipeUpdateNotification({
+        show: true,
+        message: '✨ Recipe updated successfully!'
+      })
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => {
+        setRecipeUpdateNotification({ show: false, message: '' })
+      }, 5000)
+    }
+    
+    // Scroll to top to show the updated recipe
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    
+    // Only close on mobile/tablet (when onClose is provided), keep open on desktop since sidebar is always visible
+    if (externalSetShowAIChat && window.innerWidth < 1280) {
     setShowAIChat(false)
     }
   }
@@ -630,22 +660,56 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative">
-      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
+    <div className={`min-h-screen relative transition-colors duration-300 overflow-y-auto ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-white'}`} style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Recipe Update Notification */}
+      <AnimatePresence>
+        {recipeUpdateNotification.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[200] max-w-md w-full mx-4"
+          >
+            <div className={`p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 shadow-2xl backdrop-blur-xl ${
+              isDark 
+                ? 'bg-gradient-to-r from-primary-500/90 via-primary-600/90 to-primary-500/90 border-primary-400/50 text-white' 
+                : 'bg-gradient-to-r from-primary-500 via-primary-600 to-primary-500 border-primary-400 text-white'
+            }`}>
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-base sm:text-lg">{recipeUpdateNotification.message}</p>
+                </div>
+                <button
+                  onClick={() => setRecipeUpdateNotification({ show: false, message: '' })}
+                  className="flex-shrink-0 text-white/80 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 md:gap-6 max-w-[1600px] mx-auto px-2 sm:px-3 md:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 md:py-6 lg:py-8">
         {/* Main Recipe Content */}
         <div className="flex-1 min-w-0 w-full">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2 sm:gap-3">
           <button
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
               onBack()
             }}
-            className="flex items-center space-x-2 text-slate-400 hover:text-slate-200 transition-colors z-10 relative"
+            className={`flex items-center space-x-1.5 sm:space-x-2 transition-colors z-10 relative ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-black/60 hover:text-black'}`}
+            style={{ touchAction: 'manipulation' }}
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to recipes</span>
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="font-medium text-sm sm:text-base">Back to recipes</span>
           </button>
           <div className="flex items-center space-x-2">
             {/* Save/Unsave Button */}
@@ -676,7 +740,9 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                   isSaved
                     ? 'bg-primary-500/20 border border-primary-500/50 text-primary-300 hover:bg-primary-500/30'
-                    : 'bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10'
+                    : isDark
+                    ? 'bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10'
+                    : 'bg-white border border-primary-200 text-black hover:border-primary-500/50 hover:bg-primary-50/50'
                 }`}
                 title={isSaved ? 'Remove from saved' : 'Save recipe'}
               >
@@ -701,7 +767,11 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             {/* Download PDF Button */}
             <button
               onClick={downloadPDF}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl font-medium bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all duration-300"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                isDark
+                  ? 'bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:border-primary-500/50 hover:bg-primary-500/10'
+                  : 'bg-slate-100 border border-slate-300 text-slate-700 hover:border-primary-500/50 hover:bg-primary-500/10'
+              }`}
               title="Download recipe as PDF"
             >
               <Download className="w-4 h-4" />
@@ -714,7 +784,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         {cookingMode && (
           <button
             onClick={() => setShowAIChat(true)}
-            className="fixed bottom-8 right-8 z-50 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 text-white p-5 rounded-full shadow-2xl premium-glow hover:scale-110 transition-all duration-300 group animate-pulse hover:animate-none"
+            className="xl:hidden fixed bottom-8 right-8 z-50 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 text-white p-5 rounded-full shadow-2xl premium-glow hover:scale-110 transition-all duration-300 group animate-pulse hover:animate-none"
             title="Modify recipe with AI"
           >
             <Wand2 className="w-6 h-6 group-hover:rotate-12 transition-transform" />
@@ -723,7 +793,11 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         )}
 
         {/* Recipe Header */}
-        <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 border-slate-800/80">
+        <div className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 border transition-colors duration-300 ${
+          isDark 
+            ? 'glass-effect border-slate-800/80' 
+            : 'bg-white border-primary-200/50'
+        }`}>
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
             <div className="flex-shrink-0">
               <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-accent-500/20 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden border border-primary-500/20 relative">
@@ -742,15 +816,15 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-medium text-slate-100 mb-2 sm:mb-3">{currentRecipe.name}</h1>
-              <p className="text-base sm:text-lg text-slate-300 mb-3 sm:mb-4">{currentRecipe.description}</p>
+              <h1 className={`text-2xl sm:text-3xl md:text-4xl font-medium mb-2 sm:mb-3 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>{currentRecipe.name}</h1>
+              <p className={`text-base sm:text-lg mb-3 sm:mb-4 transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/80'}`}>{currentRecipe.description}</p>
               
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4">
-                <div className="flex items-center space-x-2 text-slate-300">
+                <div className={`flex items-center space-x-2 transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/70'}`}>
                   <Clock className="w-5 h-5 text-primary-400" />
                   <span className="font-medium">{currentRecipe.time}</span>
                 </div>
-                <div className="flex items-center space-x-2 text-slate-300">
+                <div className={`flex items-center space-x-2 transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/70'}`}>
                   <Users className="w-5 h-5 text-primary-400" />
                   <span className="font-medium">
                     {servingMultiplier !== 1 
@@ -761,7 +835,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                 </div>
                 <div className="flex items-center space-x-2">
                   <Star className="w-5 h-5 fill-primary-400 text-primary-400" />
-                  <span className="font-medium text-slate-200">{currentRecipe.rating}</span>
+                  <span className={`font-medium transition-colors duration-300 ${isDark ? 'text-slate-200' : 'text-black'}`}>{currentRecipe.rating}</span>
                 </div>
                 <div className="px-3 py-1 bg-primary-500/20 border border-primary-500/30 text-primary-300 rounded-full text-sm font-medium">
                   {currentRecipe.difficulty}
@@ -772,7 +846,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                 {currentRecipe.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="px-3 py-1 bg-slate-800/60 text-slate-300 rounded-full text-sm border border-slate-700/50"
+                    className={`px-3 py-1 rounded-full text-sm border transition-colors duration-300 ${isDark ? 'bg-slate-800/60 text-slate-300 border-slate-700/50' : 'bg-primary-50 text-black border-primary-200'}`}
                   >
                     {tag}
                   </span>
@@ -827,7 +901,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                       setTimerActive(false)
                       setTimerSeconds(null)
                     }}
-                    className="px-4 py-2 border-2 border-slate-700 text-slate-300 rounded-xl font-medium hover:bg-slate-800/60 transition-colors"
+                    className={`px-4 py-2 border-2 rounded-xl font-medium transition-colors duration-300 ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800/60' : 'border-primary-300 text-black hover:bg-primary-50'}`}
                   >
                     Exit Cooking Mode
                   </button>
@@ -838,8 +912,8 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         </div>
 
         {/* Ingredients */}
-        <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 border-slate-800/80">
-          <h2 className="text-xl sm:text-2xl font-medium text-slate-100 mb-3 sm:mb-4 flex items-center space-x-2">
+        <div className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 border transition-colors duration-300 ${isDark ? 'glass-effect border-slate-800/80' : 'bg-white border-primary-200/50'}`}>
+          <h2 className={`text-xl sm:text-2xl font-medium mb-3 sm:mb-4 flex items-center space-x-2 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>
             {cookingMode ? (
               <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
             ) : (
@@ -847,7 +921,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             )}
             <span className="text-base sm:text-xl md:text-2xl font-medium">
               {cookingMode ? 'Get Your Ingredients' : 'Ingredients Needed'}
-              {cookingMode && <span className="hidden sm:inline text-sm text-slate-400 ml-2 font-normal">(Check off as you gather)</span>}
+              {cookingMode && <span className={`hidden sm:inline text-sm ml-2 font-normal transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>(Check off as you gather)</span>}
             </span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
@@ -863,7 +937,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                       ? 'bg-primary-500/20 border-2 border-primary-500/50'
                       : hasIt
                       ? 'bg-primary-500/10 border-2 border-primary-500/30'
-                      : 'bg-slate-800/40 border-2 border-slate-700/50'
+                      : isDark ? 'bg-slate-800/40 border-2 border-slate-700/50' : 'bg-white border-2 border-primary-200'
                   } ${cookingMode ? 'hover:border-primary-400/50' : ''}`}
                 >
                   {cookingMode ? (
@@ -877,7 +951,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                       {isChecked ? (
                         <CheckCircle className="w-6 h-6 text-primary-400" />
                       ) : (
-                        <Circle className="w-6 h-6 text-slate-500" />
+                        <Circle className={`w-6 h-6 transition-colors duration-300 ${isDark ? 'text-slate-500' : 'text-primary-400'}`} />
                       )}
                     </button>
                   ) : hasIt ? (
@@ -904,23 +978,23 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                       className="flex-shrink-0 hover:scale-110 transition-transform"
                       title="Remove ingredient - Get alternatives"
                     >
-                      <XCircle className="w-5 h-5 text-slate-500 hover:text-red-400 transition-colors" />
+                      <XCircle className={`w-5 h-5 hover:text-red-400 transition-colors duration-300 ${isDark ? 'text-slate-500' : 'text-primary-400'}`} />
                     </button>
                   )}
                   <div className="flex-1">
-                    <span className={`font-medium text-lg ${
+                    <span className={`font-medium text-lg transition-colors duration-300 ${
                       isChecked 
-                        ? 'line-through text-slate-500' 
+                        ? `line-through ${isDark ? 'text-slate-500' : 'text-black/40'}` 
                         : removedIngredients.has(index)
                         ? 'line-through text-red-400/60'
                         : hasIt 
-                        ? 'text-slate-100' 
-                        : 'text-slate-400'
+                        ? (isDark ? 'text-slate-100' : 'text-black')
+                        : (isDark ? 'text-slate-400' : 'text-black/60')
                     }`}>
                       {ingredient.name}
                     </span>
                     {ingredient.amount && (
-                      <span className={`text-slate-400 ml-2 text-base ${cookingMode ? 'font-medium' : ''}`}>
+                      <span className={`ml-2 text-base transition-colors duration-300 ${cookingMode ? 'font-medium' : ''} ${isDark ? 'text-slate-400' : 'text-black/60'}`}>
                         • {servingMultiplier !== 1 ? calculateAdjustedAmount(ingredient.amount) : ingredient.amount}
                       </span>
                     )}
@@ -930,11 +1004,11 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
             })}
           </div>
           {cookingMode && (
-            <div className="mt-4 pt-4 border-t border-slate-800">
-              <p className="text-sm text-slate-300">
+            <div className={`mt-4 pt-4 border-t transition-colors duration-300 ${isDark ? 'border-slate-800' : 'border-primary-200'}`}>
+              <p className={`text-sm transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/70'}`}>
                 Progress: {checkedIngredients.size} of {currentRecipe.ingredients.length} ingredients gathered
               </p>
-              <div className="mt-2 w-full bg-slate-800 rounded-full h-3">
+              <div className={`mt-2 w-full rounded-full h-3 transition-colors duration-300 ${isDark ? 'bg-slate-800' : 'bg-primary-100'}`}>
                 <div
                   className="bg-primary-500 h-3 rounded-full transition-all duration-300"
                   style={{ width: `${(checkedIngredients.size / currentRecipe.ingredients.length) * 100}%` }}
@@ -946,28 +1020,28 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
 
         {/* Quick Prep Info for Parents */}
         {!cookingMode && (
-          <div className="glass-effect rounded-2xl p-6 mb-8 bg-gradient-to-br from-primary-500/10 via-primary-600/10 to-primary-700/10 border-primary-500/20">
-            <h2 className="text-2xl font-medium text-slate-100 mb-4 flex items-center space-x-2">
-              <Clock className="w-6 h-6 text-primary-400" />
+          <div className={`rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 bg-gradient-to-br from-primary-500/10 via-primary-600/10 to-primary-700/10 border transition-colors duration-300 ${isDark ? 'glass-effect border-primary-500/20' : 'border-primary-200/50'}`}>
+            <h2 className={`text-xl sm:text-2xl font-medium mb-3 sm:mb-4 flex items-center space-x-2 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
               <span>Quick Prep Guide for Busy Parents</span>
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
-                <p className="text-sm text-slate-400 mb-1">Total Time</p>
-                <p className="text-2xl font-medium text-slate-100">{currentRecipe.time}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-4">
+              <div className={`p-3 sm:p-4 rounded-xl border transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-primary-200'}`}>
+                <p className={`text-sm mb-1 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>Total Time</p>
+                <p className={`text-xl sm:text-2xl font-medium transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>{currentRecipe.time}</p>
                   </div>
-              <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
-                <p className="text-sm text-slate-400 mb-1">Difficulty</p>
-                <p className="text-2xl font-medium text-slate-100">{currentRecipe.difficulty}</p>
+              <div className={`p-3 sm:p-4 rounded-xl border transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-primary-200'}`}>
+                <p className={`text-sm mb-1 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>Difficulty</p>
+                <p className={`text-xl sm:text-2xl font-medium transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>{currentRecipe.difficulty}</p>
                 </div>
-              <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
-                <p className="text-sm text-slate-400 mb-1">Servings</p>
-                <p className="text-2xl font-medium text-slate-100">{currentRecipe.servings}</p>
+              <div className={`p-3 sm:p-4 rounded-xl border transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-primary-200'}`}>
+                <p className={`text-sm mb-1 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>Servings</p>
+                <p className={`text-xl sm:text-2xl font-medium transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>{currentRecipe.servings}</p>
               </div>
             </div>
-            <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl">
-              <p className="text-sm font-medium text-slate-100 mb-2">💡 Parent Tips:</p>
-              <ul className="space-y-1 text-sm text-slate-300">
+            <div className={`p-4 sm:p-5 rounded-xl border transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-primary-200'}`}>
+              <p className={`text-sm font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>💡 Parent Tips:</p>
+              <ul className={`space-y-1 text-sm transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/80'}`}>
                 <li>• Gather all ingredients first to save time</li>
                 <li>• Most steps can be done while multitasking</li>
                 <li>• Use cooking mode for step-by-step guidance</li>
@@ -975,9 +1049,9 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
               </ul>
               {/* Presentation Tips - Added under Parent Tips */}
               {!cookingMode && currentRecipe.presentationTips && currentRecipe.presentationTips.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-700/50">
-                  <p className="text-sm font-medium text-slate-100 mb-2">✨ Make It Look Amazing:</p>
-                  <ul className="space-y-1 text-sm text-slate-300">
+                <div className={`mt-4 pt-4 border-t transition-colors duration-300 ${isDark ? 'border-slate-700/50' : 'border-primary-200'}`}>
+                  <p className={`text-sm font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>✨ Make It Look Amazing:</p>
+                  <ul className={`space-y-1 text-sm transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/80'}`}>
                     {currentRecipe.presentationTips.map((tip, index) => (
                       <li key={index}>• {tip}</li>
                     ))}
@@ -1015,9 +1089,9 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         )}
 
         {/* Instructions */}
-        <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 border-slate-800/80">
+        <div className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 border transition-colors duration-300 ${isDark ? 'glass-effect border-slate-800/80' : 'bg-white border-primary-200/50'}`}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-medium text-slate-100 flex items-center space-x-2">
+            <h2 className={`text-xl sm:text-2xl font-medium flex items-center space-x-2 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>
               <ChefHat className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
             <span>Step-by-Step Instructions</span>
           </h2>
@@ -1032,12 +1106,12 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   if (step.includes('wash') || step.includes('rinse')) return 'wash'
                   return 'other'
                 }))).map((type, idx) => (
-                  <div key={idx} className="flex items-center space-x-1 px-2 py-1 bg-slate-800/60 rounded-lg border border-slate-700/50">
+                  <div key={idx} className={`flex items-center space-x-1 px-2 py-1 rounded-lg border transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-primary-50 border-primary-200'}`}>
                     {type === 'cut' && <span className="text-sm">🔪</span>}
                     {type === 'mix' && <RotateCw className="w-3 h-3 text-purple-400" />}
                     {type === 'cook' && <Flame className="w-3 h-3 text-orange-400" />}
                     {type === 'wash' && <Droplets className="w-3 h-3 text-cyan-400" />}
-                    <span className="text-xs text-slate-300 capitalize">{type}</span>
+                    <span className={`text-xs capitalize transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black'}`}>{type}</span>
                   </div>
                 ))}
               </div>
@@ -1046,8 +1120,8 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
 
           {/* Visual Step Flow Overview */}
           {!cookingMode && (
-            <div className="mb-6 p-4 bg-slate-800/40 rounded-xl border border-slate-700/50">
-              <p className="text-sm text-slate-300 mb-3 font-medium text-center">Recipe Flow:</p>
+            <div className={`mb-6 p-4 rounded-xl border transition-colors duration-300 ${isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-primary-50/50 border-primary-200'}`}>
+              <p className={`text-sm mb-3 font-medium text-center transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black'}`}>Recipe Flow:</p>
               <div className="flex items-center justify-center space-x-2 sm:space-x-3 overflow-x-auto pb-2">
                 {currentRecipe.instructions.map((instruction, index) => {
                   const isCompleted = completedSteps.has(index)
@@ -1061,7 +1135,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                           ? 'bg-primary-500 text-white'
                           : isCurrent
                           ? `bg-gradient-to-br ${getStepColor(instruction.step)} text-white ring-2 ring-primary-400`
-                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                          : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-primary-100 text-primary-600 hover:bg-primary-200'
                       }`}
                       title={instruction.step.substring(0, 50) + '...'}
                     >
@@ -1113,7 +1187,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     )}
                     <button
                       onClick={() => {
-                        const timeInSeconds = extractTimeFromStep(currentRecipe.instructions[currentStep].step)
+                        const timeInSeconds = currentRecipe.instructions[currentStep] ? extractTimeFromStep(currentRecipe.instructions[currentStep].step) : null
                         if (timeInSeconds) {
                           setTimerSeconds(timeInSeconds)
                           setTimerActive(false)
@@ -1147,15 +1221,15 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
               </div>
             ) : (
               // No Timer - Show Start Timer Button if step has time, otherwise show Quick Timer Options
-              cookingMode && extractTimeFromStep(currentRecipe.instructions[currentStep].step) ? (
-                <div className="p-4 sm:p-6 bg-slate-800/60 border border-slate-700/50 rounded-xl sm:rounded-2xl text-center">
+              cookingMode && currentRecipe.instructions[currentStep] && extractTimeFromStep(currentRecipe.instructions[currentStep].step) ? (
+                <div className={`p-4 sm:p-6 border rounded-xl sm:rounded-2xl text-center transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-primary-200'}`}>
                   <div className="flex items-center justify-center space-x-2 mb-4">
                     <Timer className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
-                    <h3 className="text-lg sm:text-xl font-medium text-white">Ready to Start?</h3>
+                    <h3 className={`text-lg sm:text-xl font-medium transition-colors duration-300 ${isDark ? 'text-white' : 'text-black'}`}>Ready to Start?</h3>
                   </div>
-                  <p className="text-sm text-slate-300 mb-4">This step has a timer. Click start when you're ready!</p>
+                  <p className={`text-sm mb-4 transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/70'}`}>This step has a timer. Click start when you're ready!</p>
                   <button
-                    onClick={() => startTimerForStep(currentRecipe.instructions[currentStep].step)}
+                    onClick={() => currentRecipe.instructions[currentStep] && startTimerForStep(currentRecipe.instructions[currentStep].step)}
                     className="px-6 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors flex items-center space-x-2 mx-auto"
                   >
                     <Timer className="w-5 h-5" />
@@ -1163,17 +1237,17 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   </button>
                 </div>
               ) : (
-                <div className="glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-800/50">
+                <div className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 border transition-colors duration-300 ${isDark ? 'glass-effect border-slate-800/50' : 'bg-white border-primary-200'}`}>
                   <div className="flex items-center space-x-2 mb-4">
                     <Timer className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
-                    <h3 className="text-lg sm:text-xl font-medium text-white">Quick Timer</h3>
+                    <h3 className={`text-lg sm:text-xl font-medium transition-colors duration-300 ${isDark ? 'text-white' : 'text-black'}`}>Quick Timer</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {presetTimers.map((minutes) => (
                       <button
                         key={minutes}
                         onClick={() => startCustomTimer(minutes)}
-                        className="px-4 py-2 bg-slate-800/60 border border-slate-700/50 text-slate-200 rounded-lg font-medium hover:border-primary-500/50 hover:bg-primary-500/10 transition-all"
+                        className={`px-4 py-2 border rounded-lg font-medium hover:border-primary-500/50 hover:bg-primary-500/10 transition-all duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-200' : 'bg-white border-primary-200 text-black'}`}
                       >
                         {minutes} min
                       </button>
@@ -1197,7 +1271,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   </div>
                   <div className="flex-1">
                     <h3 className="text-sm font-medium text-white mb-1">Guided Cooking Mode</h3>
-                    <p className="text-xs text-slate-300">
+                    <p className={`text-xs transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/70'}`}>
                       Follow each step one at a time. Use the timer for steps that need timing. Click "Next" when you're done with each step.
                     </p>
                   </div>
@@ -1205,7 +1279,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
               </motion.div>
             )}
             <AnimatePresence mode="wait">
-              {cookingMode ? (
+              {cookingMode && currentRecipe.instructions[currentStep] ? (
                 // Cooking Mode: Show only current step with large text and visuals
                 <motion.div
                   key={currentStep}
@@ -1217,37 +1291,37 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   <div className="text-center mb-4 sm:mb-6">
                     {/* Visual Step Indicator */}
                     <div className="flex items-center justify-center mb-4 sm:mb-6">
-                      <div className={`inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br ${getStepColor(currentRecipe.instructions[currentStep].step)} text-white mb-2 sm:mb-4 premium-glow relative`}>
+                      <div className={`inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br ${currentRecipe.instructions[currentStep] ? getStepColor(currentRecipe.instructions[currentStep].step) : 'from-primary-500 to-primary-600'} text-white mb-2 sm:mb-4 premium-glow relative`}>
                         <div className="absolute inset-0 flex items-center justify-center text-xl sm:text-2xl">
-                          {getStepIcon(currentRecipe.instructions[currentStep].step)}
+                          {currentRecipe.instructions[currentStep] ? getStepIcon(currentRecipe.instructions[currentStep].step) : '🍳'}
                         </div>
-                        <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-900 border-2 border-primary-500 flex items-center justify-center text-xs sm:text-sm font-medium">
+                        <div className={`absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-primary-500 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors duration-300 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
                           {currentStep + 1}
                         </div>
                       </div>
                     </div>
                     
                     {/* Visual Food Preparation */}
-                    {getStepVisuals(currentRecipe.instructions[currentStep].step).length > 0 && (
-                      <div className="mb-6 p-6 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl border-2 border-primary-500/20 shadow-lg">
+                    {currentRecipe.instructions[currentStep] && getStepVisuals(currentRecipe.instructions[currentStep].step).length > 0 && (
+                      <div className={`mb-6 p-6 rounded-xl border-2 border-primary-500/20 shadow-lg transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-slate-800/80 to-slate-900/80' : 'bg-gradient-to-br from-primary-50 to-primary-100/50'}`}>
                         <p className="text-center text-sm text-primary-300 mb-4 font-medium uppercase tracking-wide">Visual Preparation Guide</p>
                         <div className="flex items-center justify-center space-x-2 sm:space-x-3 text-3xl sm:text-4xl md:text-5xl mb-2 flex-wrap">
                           {getStepVisuals(currentRecipe.instructions[currentStep].step).map((visual, idx) => (
                             <div key={idx} className="flex items-center space-x-1">
                               <span className="font-mono leading-none">{visual}</span>
                               {idx < getStepVisuals(currentRecipe.instructions[currentStep].step).length - 1 && (
-                                <span className="text-2xl sm:text-3xl text-slate-500 mx-1 sm:mx-2">+</span>
+                                <span className={`text-2xl sm:text-3xl mx-1 sm:mx-2 transition-colors duration-300 ${isDark ? 'text-slate-500' : 'text-primary-400'}`}>+</span>
                               )}
                             </div>
                           ))}
                         </div>
-                        <p className="text-center text-xs text-slate-400 mt-2">See how the ingredients transform</p>
+                        <p className={`text-center text-xs mt-2 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>See how the ingredients transform</p>
                       </div>
                     )}
                     
                     {/* Step Text */}
-                    <p className="text-xl sm:text-2xl md:text-3xl font-normal text-slate-100 leading-relaxed mb-4 sm:mb-6 px-2">
-                      {currentRecipe.instructions[currentStep].step}
+                    <p className={`text-xl sm:text-2xl md:text-3xl font-normal leading-relaxed mb-4 sm:mb-6 px-2 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>
+                      {currentRecipe.instructions[currentStep]?.step || 'No step available'}
                     </p>
                     
                     {/* Show final result preview on last step - Enhanced with AI-generated image */}
@@ -1262,7 +1336,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                           <h3 className="text-lg sm:text-xl md:text-2xl font-medium text-primary-300 mb-2 uppercase tracking-wide">
                             🎉 Final Result Preview
                           </h3>
-                          <p className="text-xs sm:text-sm text-slate-300">This is what your {currentRecipe.name} will look like when done!</p>
+                          <p className={`text-xs sm:text-sm transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/70'}`}>This is what your {currentRecipe.name} will look like when done!</p>
                         </div>
                         {currentRecipe.imageUrl ? (
                           <div className="w-full max-w-2xl mx-auto mb-4 relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 border-primary-500/30">
@@ -1287,7 +1361,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                                 </>
                               )}
                             </div>
-                            <p className="text-sm sm:text-base text-slate-400 italic">AI image generating...</p>
+                            <p className={`text-sm sm:text-base italic transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>AI image generating...</p>
                           </div>
                         )}
                       </motion.div>
@@ -1295,28 +1369,28 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                     
                     {/* Visual Progress Bar */}
                     <div className="w-full max-w-md mx-auto mb-6">
-                      <div className="flex items-center justify-between text-sm text-slate-400 mb-2">
+                      <div className={`flex items-center justify-between text-sm mb-2 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>
                         <span>Step {currentStep + 1} of {currentRecipe.instructions.length}</span>
                         <span>{Math.round(((currentStep + 1) / currentRecipe.instructions.length) * 100)}%</span>
                       </div>
-                      <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                      <div className={`w-full rounded-full h-3 overflow-hidden transition-colors duration-300 ${isDark ? 'bg-slate-800' : 'bg-primary-100'}`}>
                         <div 
-                          className={`h-full bg-gradient-to-r ${getStepColor(currentRecipe.instructions[currentStep].step)} transition-all duration-500`}
+                          className={`h-full bg-gradient-to-r ${currentRecipe.instructions[currentStep] ? getStepColor(currentRecipe.instructions[currentStep].step) : 'from-primary-500 to-primary-600'} transition-all duration-500`}
                           style={{ width: `${((currentStep + 1) / currentRecipe.instructions.length) * 100}%` }}
                         />
                       </div>
                     </div>
                     
-                    {currentRecipe.instructions[currentStep].tip && (
+                    {currentRecipe.instructions[currentStep]?.tip && (
                       <div className="mt-6 p-4 bg-primary-500/20 border-2 border-primary-500/40 rounded-xl">
-                        <p className="text-xl text-slate-200">
+                        <p className={`text-xl transition-colors duration-300 ${isDark ? 'text-slate-200' : 'text-black'}`}>
                           <strong className="text-primary-300">💡 Pro Tip:</strong> {currentRecipe.instructions[currentStep].tip}
                         </p>
                       </div>
                     )}
-                    {extractTimeFromStep(currentRecipe.instructions[currentStep].step) && timerSeconds === null && (
+                    {currentRecipe.instructions[currentStep] && extractTimeFromStep(currentRecipe.instructions[currentStep].step) && timerSeconds === null && (
                       <button
-                        onClick={() => startTimerForStep(currentRecipe.instructions[currentStep].step)}
+                        onClick={() => currentRecipe.instructions[currentStep] && startTimerForStep(currentRecipe.instructions[currentStep].step)}
                         className="mt-4 px-6 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors flex items-center space-x-2 mx-auto"
                       >
                         <Timer className="w-5 h-5" />
@@ -1342,7 +1416,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                           ? 'bg-primary-500/10 border-primary-500/30'
                         : isCurrent
                           ? 'bg-primary-500/20 border-primary-500/50 shadow-lg'
-                          : 'bg-slate-800/40 border-slate-700/50 hover:border-slate-600/50'
+                          : isDark ? 'bg-slate-800/40 border-slate-700/50 hover:border-slate-600/50' : 'bg-white border-primary-200 hover:border-primary-300'
                     }`}
                     onClick={() => toggleStep(index)}
                   >
@@ -1359,28 +1433,28 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                               {getStepIcon(instruction.step)}
                             </div>
                           )}
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-900 border border-white/20 flex items-center justify-center text-xs">
+                          <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border border-white/20 flex items-center justify-center text-xs transition-colors duration-300 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
                             {index + 1}
                           </div>
                       </div>
                       <div className="flex-1">
                           {/* Visual Food Preparation for each step */}
                           {getStepVisuals(instruction.step).length > 0 && (
-                            <div className="mb-3 p-3 bg-gradient-to-r from-slate-800/60 to-slate-800/40 rounded-lg border border-primary-500/20">
+                            <div className={`mb-3 p-3 rounded-lg border border-primary-500/20 transition-colors duration-300 ${isDark ? 'bg-gradient-to-r from-slate-800/60 to-slate-800/40' : 'bg-gradient-to-r from-primary-50 to-primary-100/50'}`}>
                               <div className="flex items-center space-x-2 text-2xl">
                                 {getStepVisuals(instruction.step).map((visual, idx) => (
                                   <span key={idx} className="font-mono leading-none">{visual}</span>
                                 ))}
                               </div>
-                              <p className="text-xs text-slate-400 mt-1">Visual guide</p>
+                              <p className={`text-xs mt-1 transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>Visual guide</p>
                             </div>
                           )}
-                          <p className={`text-lg font-medium ${isCompleted ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                          <p className={`text-lg font-medium transition-colors duration-300 ${isCompleted ? `line-through ${isDark ? 'text-slate-500' : 'text-black/40'}` : (isDark ? 'text-slate-200' : 'text-black')}`}>
                           {instruction.step}
                         </p>
                         {instruction.tip && (
                             <div className="mt-2 p-3 bg-primary-500/20 border border-primary-500/30 rounded-lg">
-                              <p className="text-sm text-slate-300">
+                              <p className={`text-sm transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-black/80'}`}>
                                 <strong className="text-primary-300">💡 Tip:</strong> {instruction.tip}
                             </p>
                           </div>
@@ -1395,7 +1469,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
           </div>
 
           {/* Navigation */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-800">
+          <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t transition-colors duration-300 ${isDark ? 'border-slate-800' : 'border-primary-200'}`}>
             <button
               onClick={() => {
                 setCurrentStep(Math.max(0, currentStep - 1))
@@ -1405,18 +1479,18 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                 }
               }}
               disabled={currentStep === 0}
-              className={`w-full sm:w-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl border-2 border-slate-700 text-slate-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800/60 transition-colors text-sm sm:text-base ${
+              className={`w-full sm:w-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl border-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base ${
                 cookingMode ? 'md:text-lg lg:text-xl' : ''
-              }`}
+              } ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800/60' : 'border-primary-300 text-black hover:bg-primary-50'}`}
             >
               ← Previous
             </button>
             <div className="text-center w-full sm:w-auto">
-              <span className={`text-slate-300 font-medium text-sm sm:text-base ${cookingMode ? 'md:text-lg lg:text-xl' : ''}`}>
+              <span className={`font-medium text-sm sm:text-base transition-colors duration-300 ${cookingMode ? 'md:text-lg lg:text-xl' : ''} ${isDark ? 'text-slate-300' : 'text-black'}`}>
               Step {currentStep + 1} of {currentRecipe.instructions.length}
             </span>
               {cookingMode && (
-                <div className="mt-2 w-full sm:w-64 mx-auto bg-slate-800 rounded-full h-2">
+                <div className={`mt-2 w-full sm:w-64 mx-auto rounded-full h-2 transition-colors duration-300 ${isDark ? 'bg-slate-800' : 'bg-primary-100'}`}>
                   <div
                     className="bg-primary-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${((currentStep + 1) / currentRecipe.instructions.length) * 100}%` }}
@@ -1493,7 +1567,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                   transition={{ delay: 0.3 }}
                   className="mt-6 sm:mt-8 glass-effect rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-primary-500/20 via-primary-600/20 to-primary-500/20 border-2 border-primary-500/40 shadow-xl"
                 >
-                  <h2 className="text-xl sm:text-2xl font-medium text-slate-100 mb-4 flex items-center space-x-2">
+                  <h2 className={`text-xl sm:text-2xl font-medium mb-4 flex items-center space-x-2 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>
                     <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary-400" />
                     <span>Make It Look Amazing! (Quick & Easy)</span>
                   </h2>
@@ -1509,7 +1583,7 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center flex-shrink-0 text-sm sm:text-base font-medium shadow-lg">
                           {index + 1}
                         </div>
-                        <p className="text-slate-200 flex-1 text-sm sm:text-base leading-relaxed">{tip}</p>
+                        <p className={`flex-1 text-sm sm:text-base leading-relaxed transition-colors duration-300 ${isDark ? 'text-slate-200' : 'text-black'}`}>{tip}</p>
                       </motion.div>
                     ))}
                   </div>
@@ -1521,13 +1595,13 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
 
         {/* Nutritional Info */}
         {currentRecipe.nutrition && (
-          <div className="glass-effect rounded-2xl p-6 border-slate-800/80">
-            <h2 className="text-2xl font-medium text-slate-100 mb-4">Nutritional Information</h2>
+          <div className={`rounded-2xl p-6 border transition-colors duration-300 ${isDark ? 'glass-effect border-slate-800/80' : 'bg-white border-primary-200/50'}`}>
+            <h2 className={`text-2xl font-medium mb-4 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-black'}`}>Nutritional Information</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(currentRecipe.nutrition).map(([key, value]) => (
-                <div key={key} className="text-center p-4 bg-slate-800/60 border border-slate-700/50 rounded-xl">
+                <div key={key} className={`text-center p-4 border rounded-xl transition-colors duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-primary-200'}`}>
                   <div className="text-2xl font-medium text-primary-400">{value}</div>
-                  <div className="text-sm text-slate-400 capitalize">{key}</div>
+                  <div className={`text-sm capitalize transition-colors duration-300 ${isDark ? 'text-slate-400' : 'text-black/60'}`}>{key}</div>
                 </div>
               ))}
             </div>
@@ -1535,10 +1609,10 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         )}
       </div>
 
-        {/* AI Chat Sidebar - Always Visible */}
-        <div className="hidden lg:block w-full lg:w-80 xl:w-96 flex-shrink-0 relative">
+        {/* AI Chat Sidebar - Always Visible on Desktop */}
+        <div className="hidden xl:block w-full xl:w-80 2xl:w-96 flex-shrink-0 relative">
           <div className="sticky top-4 sm:top-8 h-[calc(100vh-2rem)] sm:h-[calc(100vh-4rem)]">
-            <div className="h-full bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
+            <div className={`h-full backdrop-blur-xl border rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden transition-colors duration-300 ${isDark ? 'bg-slate-900/95 border-slate-800/50' : 'bg-white border-primary-200'}`}>
               <AIChat
                 onRecipeGenerated={handleRecipeUpdated}
                 currentRecipe={currentRecipe}
@@ -1553,20 +1627,27 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
           
         </div>
 
-        {/* Mobile AI Chat Button */}
+        {/* Tablet & Mobile AI Chat Button */}
         <button
-          onClick={() => setShowAIChat(true)}
-          className="lg:hidden fixed bottom-4 sm:bottom-6 md:bottom-8 right-4 sm:right-6 md:right-8 z-50 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 text-white p-3 sm:p-4 rounded-full shadow-2xl premium-glow hover:scale-110 transition-all duration-300"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            console.log('AI Chat button clicked, current state:', showAIChat)
+            setShowAIChat(true)
+            console.log('Set showAIChat to true')
+          }}
+          className="xl:hidden fixed bottom-4 sm:bottom-6 md:bottom-8 right-4 sm:right-6 md:right-8 z-[100] bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 text-white p-3 sm:p-4 md:p-5 rounded-full shadow-2xl premium-glow hover:scale-110 active:scale-95 transition-all duration-300 touch-manipulation cursor-pointer"
           title="Open AI Assistant"
+          type="button"
         >
-          <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
+          <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 pointer-events-none" />
         </button>
 
-        {/* Mobile AI Chat Sidebar */}
-        <div className={`lg:hidden fixed right-0 top-0 h-full z-40 transition-transform duration-300 ease-in-out ${
+        {/* Tablet & Mobile AI Chat Sidebar */}
+        <div className={`xl:hidden fixed right-0 top-0 h-full z-[90] transition-transform duration-300 ease-in-out ${
           showAIChat ? 'translate-x-0' : 'translate-x-full'
         }`}>
-          <div className="h-full w-full sm:max-w-sm bg-slate-900/95 backdrop-blur-xl border-l border-slate-800/50 shadow-2xl">
+          <div className={`h-full w-full sm:max-w-sm md:max-w-md lg:max-w-lg backdrop-blur-xl border-l shadow-2xl transition-colors duration-300 ${isDark ? 'bg-slate-900/95 border-slate-800/50' : 'bg-white border-primary-200'}`}>
             <AIChat
               onRecipeGenerated={handleRecipeUpdated}
               currentRecipe={currentRecipe}
@@ -1580,21 +1661,31 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
         </div>
         {showAIChat && (
           <div 
-            className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-30"
-            onClick={() => setShowAIChat(false)}
+            className="xl:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[80]"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowAIChat(false)
+            }}
           />
         )}
       </div>
 
-      {/* Floating Magic Button in Cooking Mode (Mobile Only) */}
+      {/* Floating Magic Button in Cooking Mode (Tablet & Mobile Only) */}
       {cookingMode && (
         <button
-          onClick={() => setShowAIChat(true)}
-          className="lg:hidden fixed bottom-16 sm:bottom-20 md:bottom-24 right-4 sm:right-6 md:right-8 z-50 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 text-white p-4 sm:p-5 rounded-full shadow-2xl premium-glow hover:scale-110 transition-all duration-300 group animate-pulse hover:animate-none"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            console.log('Cooking mode AI button clicked')
+            setShowAIChat(true)
+          }}
+          className="xl:hidden fixed bottom-16 sm:bottom-20 md:bottom-24 right-4 sm:right-6 md:right-8 z-[100] bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 text-white p-4 sm:p-5 md:p-6 rounded-full shadow-2xl premium-glow hover:scale-110 active:scale-95 transition-all duration-300 group animate-pulse hover:animate-none touch-manipulation cursor-pointer"
           title="Modify recipe with AI"
+          type="button"
         >
-          <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform" />
-          <span className="absolute -top-2 -right-2 w-3 h-3 bg-primary-400 rounded-full animate-ping"></span>
+          <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 group-hover:rotate-12 transition-transform pointer-events-none" />
+          <span className="absolute -top-2 -right-2 w-3 h-3 bg-primary-400 rounded-full animate-ping pointer-events-none"></span>
         </button>
       )}
 

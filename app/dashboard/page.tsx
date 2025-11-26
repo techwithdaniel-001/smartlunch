@@ -31,13 +31,6 @@ export default function DashboardPage() {
     }
   }, [user, loading, router])
 
-  useEffect(() => {
-    if (user && !loadingRef.current) {
-      loadSavedRecipes()
-      loadUserPreferences()
-    }
-  }, [user])
-
   const loadSavedRecipes = useCallback(async () => {
     if (!user || loadingRef.current) return
     
@@ -55,7 +48,7 @@ export default function DashboardPage() {
     }
   }, [user])
 
-  const loadUserPreferences = async () => {
+  const loadUserPreferences = useCallback(async () => {
     if (!user) return
     
     try {
@@ -75,7 +68,15 @@ export default function DashboardPage() {
       // Show onboarding on error too
       setShowOnboarding(true)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user && !loadingRef.current) {
+      // Load data but don't block rendering
+      loadSavedRecipes().catch(err => console.error('Failed to load saved recipes:', err))
+      loadUserPreferences().catch(err => console.error('Failed to load preferences:', err))
+    }
+  }, [user, loadSavedRecipes, loadUserPreferences])
 
   const handleOnboardingComplete = async () => {
     setShowOnboarding(false)
@@ -140,7 +141,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 relative animate-pulse">
             <Image
@@ -151,11 +152,14 @@ export default function DashboardPage() {
               priority
             />
           </div>
-          <p className="text-slate-400">Loading...</p>
+          <p className="text-black/70">Loading...</p>
         </div>
       </div>
     )
   }
+
+  // Don't wait for saved recipes to load - show dashboard immediately
+  // The saved recipes will load in the background
 
   if (!user) {
     return null
@@ -180,6 +184,7 @@ export default function DashboardPage() {
       userPreferences={userPreferences}
       onPreferencesUpdated={loadUserPreferences}
       onRecipeGenerated={handleRecipeGenerated}
+      onMealPlanCreated={() => router.push('/meal-plans')}
     />
   )
 }
