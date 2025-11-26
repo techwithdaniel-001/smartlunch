@@ -56,6 +56,7 @@ export default function Dashboard({
   const [mealPlanDuration, setMealPlanDuration] = useState<'day' | 'week' | 'month' | null>(null)
   const [creatingMealPlan, setCreatingMealPlan] = useState(false)
   const [isCreatingMealPlan, setIsCreatingMealPlan] = useState(false)
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false)
   
   // Check for meal plan query parameter
   useEffect(() => {
@@ -107,8 +108,7 @@ export default function Dashboard({
     if (mealPlanCheck.isMealPlan || mealPlanDuration) {
       setAiInput('')
       setMealPlanDuration(null)
-      alert('Meal plans are coming soon! We\'re working hard to bring you this feature. If you\'d like to see it sooner, let us know - we release features based on user requests. For now, you can use our recipe search to find individual recipes!')
-      return
+      setShowComingSoonModal(true)
       return
     }
 
@@ -186,7 +186,7 @@ export default function Dashboard({
                   href="/meal-plans"
                   onClick={(e) => {
                     e.preventDefault()
-                    alert('Meal plans are coming soon! We\'re working hard to bring you this feature. If you\'d like to see it sooner, let us know - we release features based on user requests.')
+                    setShowComingSoonModal(true)
                   }}
                   className={`flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-semibold transition-all duration-300 border hover:border-primary-500/50 hover:bg-primary-500/10 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-200' : 'bg-white border-primary-200 text-black'}`}
                 >
@@ -371,6 +371,57 @@ export default function Dashboard({
         {isCreatingMealPlan && <MealPlanLoading />}
       </AnimatePresence>
 
+      {/* Coming Soon Modal */}
+      <AnimatePresence>
+        {showComingSoonModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowComingSoonModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`rounded-2xl sm:rounded-3xl border border-primary-500/30 p-6 sm:p-8 max-w-md w-full shadow-2xl transition-colors duration-300 ${isDark ? 'glass-effect' : 'bg-white'}`}
+            >
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-500/20 border-4 border-primary-500/30 mb-4">
+                  <Calendar className="w-8 h-8 text-primary-500" />
+                </div>
+                <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-primary-900'}`}>
+                  Meal Plans
+                </h3>
+                <h4 className={`text-xl font-medium mb-4 transition-colors duration-300 ${isDark ? 'text-primary-300' : 'text-primary-600'}`}>
+                  Coming Soon!
+                </h4>
+              </div>
+
+              <div className={`space-y-4 mb-6 transition-colors duration-300 ${isDark ? 'text-primary-200' : 'text-primary-700'}`}>
+                <p className="text-base leading-relaxed">
+                  We're working hard to bring you personalized meal planning! This feature will help you plan your meals for the week or month ahead.
+                </p>
+                <p className="text-sm">
+                  If you'd like to see this feature sooner, let us know! We release features based on user requests.
+                </p>
+                <p className="text-sm font-medium">
+                  For now, you can use our recipe search to find individual recipes! 🍽️
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowComingSoonModal(false)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-medium hover:from-primary-600 hover:to-primary-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                Got it!
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
