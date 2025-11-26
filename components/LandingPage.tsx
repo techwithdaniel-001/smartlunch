@@ -661,7 +661,7 @@ export default function LandingPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-colors duration-300 ${isDark ? 'bg-black/80' : 'bg-black/60'}`}
             onClick={() => setShowStory(false)}
           >
             <motion.div
@@ -669,17 +669,17 @@ export default function LandingPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="glass-effect rounded-3xl p-8 sm:p-12 border-primary-500/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative"
+              className={`rounded-3xl p-8 sm:p-12 border-2 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative transition-colors duration-300 ${isDark ? 'bg-slate-900 border-primary-500/20' : 'bg-white border-primary-200'}`}
             >
               <button
                 onClick={() => setShowStory(false)}
-                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-slate-400 hover:text-white hover:border-primary-500/50 transition-all"
+                className={`absolute top-6 right-6 w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-white hover:border-primary-500/50' : 'bg-slate-100/80 border-slate-200/50 text-slate-600 hover:text-slate-900 hover:border-primary-500/50'}`}
               >
                 <X className="w-5 h-5" />
               </button>
 
               <div className="text-center mb-12">
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium text-white mb-4">
+                <h2 className={`text-3xl sm:text-4xl md:text-5xl font-medium mb-4 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Our Story
                 </h2>
                 <div className="w-24 h-1 bg-gradient-to-r from-primary-500 to-primary-600 mx-auto rounded-full"></div>
@@ -696,14 +696,14 @@ export default function LandingPage() {
                   />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-2xl font-medium text-white mb-2">Fathima Zahra</h3>
-                  <p className="text-primary-400 mb-4">Founder & CEO</p>
+                  <h3 className={`text-2xl font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>Fathima Zahra</h3>
+                  <p className="text-primary-500 mb-4">Founder & CEO</p>
                 </div>
               </div>
 
-              <div className="space-y-6 text-lg text-slate-300 leading-relaxed">
+              <div className={`space-y-6 text-lg leading-relaxed transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <p>
-                  I started cooking lunches for my family when I was just <strong className="text-white">9 years old</strong>. 
+                  I started cooking lunches for my family when I was just <strong className={`transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>9 years old</strong>. 
                   It became my responsibility, and I quickly learned how challenging it can be to create healthy, 
                   delicious meals day after day especially when you're busy.
                 </p>
@@ -714,7 +714,7 @@ export default function LandingPage() {
                   nutritious lunches feels impossible.
                 </p>
                 
-                <p className="text-xl text-white font-medium">
+                <p className={`text-xl font-medium transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   That's why I created Smart Lunch.
                 </p>
                 
@@ -724,8 +724,8 @@ export default function LandingPage() {
                   it's like to be in your kitchen, trying to make something special for the people you care about.
                 </p>
                 
-                <div className="pt-6 border-t border-slate-700/50">
-                  <p className="text-primary-400 font-medium">
+                <div className={`pt-6 border-t transition-colors duration-300 ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                  <p className="text-primary-500 font-medium">
                     Join thousands of families who are already making lunchtime easier, healthier, and more fun.
                   </p>
                 </div>
