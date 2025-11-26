@@ -686,8 +686,14 @@ export default function LandingPage() {
               </div>
 
               <div className="flex items-start space-x-6 mb-8">
-                <div className="flex-shrink-0 w-20 h-20 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-3xl">
-                  👩‍🍳
+                <div className="flex-shrink-0 w-20 h-20 rounded-full overflow-hidden border-2 border-primary-500/50">
+                  <Image
+                    src="/assets/zahra.jpg"
+                    alt="Fathima Zahra"
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-2xl font-medium text-white mb-2">Fathima Zahra</h3>
