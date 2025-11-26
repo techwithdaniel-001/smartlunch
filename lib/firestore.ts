@@ -57,17 +57,9 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
       existingUserId: existingData?.userId
     })
     
-    // Use proper create/update logic to match security rules
-    if (exists) {
-      // Update existing document - rules require both existing and new userId to match
-      if (existingData?.userId !== currentUser.uid) {
-        throw new Error('Cannot update recipe: userId mismatch')
-      }
-      await updateDoc(recipeRef, recipeData)
-    } else {
-      // Create new document - rules require userId to match auth.uid
-      await setDoc(recipeRef, recipeData)
-    }
+    // Use setDoc with merge to handle both create and update
+    // This ensures userId is always set correctly and works with security rules
+    await setDoc(recipeRef, recipeData, { merge: true })
     
     console.log('Recipe saved successfully!')
     
