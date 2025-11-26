@@ -678,26 +678,29 @@ export default function LandingPage() {
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="text-center mb-12">
-                <h2 className={`text-3xl sm:text-4xl md:text-5xl font-medium mb-4 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <div className="text-center mb-8">
+                <h2 className={`text-3xl sm:text-4xl md:text-5xl font-medium mb-6 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Our Story
                 </h2>
-                <div className="w-24 h-1 bg-gradient-to-r from-primary-500 to-primary-600 mx-auto rounded-full"></div>
-              </div>
-
-              <div className="flex items-start space-x-6 mb-8">
-                <div className="flex-shrink-0 w-20 h-20 rounded-full overflow-hidden border-2 border-primary-500/50">
-                  <Image
-                    src="/assets/zahra.jpg"
-                    alt="Fathima Zahra"
-                    width={80}
-                    height={80}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-24 h-1 bg-gradient-to-r from-primary-500 to-primary-600 mx-auto rounded-full mb-8"></div>
+                
+                {/* Profile Image - Larger and Centered */}
+                <div className="flex justify-center mb-6">
+                  <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-full overflow-hidden border-4 shadow-xl transition-all duration-300 border-primary-500/50 hover:border-primary-500 hover:scale-105">
+                    <Image
+                      src="/assets/zahra.jpg"
+                      alt="Fathima Zahra"
+                      fill
+                      className="object-cover"
+                      priority
+                    />
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className={`text-2xl font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>Fathima Zahra</h3>
-                  <p className="text-primary-500 mb-4">Founder & CEO</p>
+                
+                {/* Name and Title - Centered */}
+                <div className="mb-8">
+                  <h3 className={`text-2xl sm:text-3xl font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>Fathima Zahra</h3>
+                  <p className="text-primary-500 text-lg">Founder & CEO</p>
                 </div>
               </div>
 
