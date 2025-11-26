@@ -103,95 +103,12 @@ export default function Dashboard({
     const query = aiInput.trim()
     const mealPlanCheck = detectMealPlanRequest(query)
     
-    // If it's a meal plan request or we have a meal plan duration set, create meal plan
-    const duration = mealPlanDuration || mealPlanCheck.duration || 'week'
+    // If it's a meal plan request, show coming soon message
     if (mealPlanCheck.isMealPlan || mealPlanDuration) {
-      setCreatingMealPlan(true)
-      setIsCreatingMealPlan(true)
       setAiInput('')
-      
-      try {
-        const response = await fetch('/api/ai-meal-plan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            duration,
-            userPreferences: {
-              ...userPreferences,
-              mealPlanQuery: query, // Pass the user's query to customize the meal plan
-            },
-          }),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }))
-          console.error('API error:', errorData)
-          alert(`Failed to create meal plan: ${errorData.error || 'Unknown error'}`)
-          setIsCreatingMealPlan(false)
-          setCreatingMealPlan(false)
-          setMealPlanDuration(null)
-          return
-        }
-
-        const data = await response.json()
-        if (data.error) {
-          console.error('API returned error:', data.error)
-          alert(`Failed to create meal plan: ${data.error}`)
-          setIsCreatingMealPlan(false)
-          setCreatingMealPlan(false)
-          setMealPlanDuration(null)
-          return
-        }
-
-        if (data.mealPlan) {
-          const mealPlan = {
-            ...data.mealPlan,
-            userId: user?.uid || '',
-            name: query || `${duration.charAt(0).toUpperCase() + duration.slice(1)} Meal Plan`,
-          }
-          
-          // Store in sessionStorage so it can be viewed even if save fails
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem(`mealPlan-${mealPlan.id}`, JSON.stringify(mealPlan))
-            sessionStorage.setItem('tempMealPlanId', mealPlan.id)
-          }
-          
-          // Try to save, but don't block navigation if it fails
-          try {
-            const { saveMealPlanToFirestore } = await import('@/lib/firestore')
-            await saveMealPlanToFirestore(user?.uid || '', mealPlan)
-            // Clear temp flag if save succeeds
-            if (typeof window !== 'undefined') {
-              sessionStorage.removeItem('tempMealPlanId')
-            }
-          } catch (saveError: any) {
-            console.error('Error saving meal plan to Firestore:', saveError)
-            // Don't show alert, just log - user can still see the meal plan
-            // Set a flag to show a warning on the meal plan page
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem('mealPlanSaveFailed', 'true')
-            }
-          }
-          
-          setMealPlanDuration(null)
-          setIsCreatingMealPlan(false)
-          setCreatingMealPlan(false)
-          // Navigate to meal plan detail view regardless of save status
-          router.push(`/meal-plans?id=${mealPlan.id}`)
-        } else {
-          console.error('No meal plan in response:', data)
-          alert('Failed to create meal plan: No meal plan data received')
-          setIsCreatingMealPlan(false)
-          setCreatingMealPlan(false)
-          setMealPlanDuration(null)
-        }
-      } catch (error: any) {
-        console.error('Error creating meal plan:', error)
-        alert(`Failed to create meal plan: ${error?.message || 'Please try again.'}`)
-        setIsCreatingMealPlan(false)
-        setCreatingMealPlan(false)
-        setMealPlanDuration(null)
-      }
+      setMealPlanDuration(null)
+      alert('Meal plans are coming soon! We\'re working hard to bring you this feature. If you\'d like to see it sooner, let us know - we release features based on user requests. For now, you can use our recipe search to find individual recipes!')
+      return
       return
     }
 
@@ -267,6 +184,10 @@ export default function Dashboard({
               <div className="flex items-center space-x-2">
                 <Link
                   href="/meal-plans"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    alert('Meal plans are coming soon! We\'re working hard to bring you this feature. If you\'d like to see it sooner, let us know - we release features based on user requests.')
+                  }}
                   className={`flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-semibold transition-all duration-300 border hover:border-primary-500/50 hover:bg-primary-500/10 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-200' : 'bg-white border-primary-200 text-black'}`}
                 >
                   <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -322,7 +243,7 @@ export default function Dashboard({
                   <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-primary-500/20 border border-primary-500/50 shadow-sm">
                     <Calendar className="w-4 h-4 text-primary-500" />
                     <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                      {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)} Meal Plan
+                      {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)} Meal Plan (Coming Soon)
                     </span>
                     <button
                       onClick={() => setMealPlanDuration(null)}
@@ -346,8 +267,8 @@ export default function Dashboard({
                     }
                   }}
                   placeholder={mealPlanDuration 
-                    ? `Describe your ${mealPlanDuration} meal plan... e.g., 'healthy lunches', 'high protein meals', 'kid-friendly dinners'`
-                    : "Describe what you'd like to make... e.g., 'quick pasta for kids', 'healthy wraps with chicken', or 'create a week meal plan for healthy lunches'"
+                    ? `Meal plans coming soon! Try: 'quick pasta for kids' or 'healthy wraps with chicken'`
+                    : "Describe what you'd like to make... e.g., 'quick pasta for kids', 'healthy wraps with chicken'"
                   }
                   className={`w-full border-2 rounded-2xl px-4 py-3 sm:px-5 sm:py-4 md:py-5 pb-20 sm:pb-24 md:pb-28 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/70 resize-none transition-all text-sm sm:text-base md:text-lg leading-relaxed ${isDark ? 'bg-slate-800/70 border-slate-700/50 text-white placeholder-slate-500' : 'bg-white border-primary-200 text-black placeholder-black/40'}`}
                   rows={3}

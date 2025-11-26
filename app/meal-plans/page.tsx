@@ -157,14 +157,39 @@ export default function MealPlansPage() {
 
       <div className="h-14 sm:h-16 md:h-20"></div>
 
-      <MealPlans
-        onRecipeClick={(recipe) => setSelectedRecipe(recipe)}
-        userPreferences={userPreferences}
-        initialMealPlanId={initialMealPlanId}
-        onSaveRecipe={saveRecipe}
-        onUnsaveRecipe={unsaveRecipe}
-        isRecipeSaved={isRecipeSaved}
-      />
+      {/* Coming Soon Message */}
+      <div className="flex items-center justify-center min-h-[calc(100vh-5rem)] px-4">
+        <div className="text-center max-w-2xl">
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary-500/10 border-4 border-primary-500/20 mb-6">
+              <span className="text-5xl">🍽️</span>
+            </div>
+            <h1 className={`text-4xl sm:text-5xl font-bold mb-4 transition-colors duration-300 ${isDark ? 'text-white' : 'text-primary-900'}`}>
+              Meal Plans
+            </h1>
+            <h2 className={`text-2xl sm:text-3xl font-medium mb-6 transition-colors duration-300 ${isDark ? 'text-primary-300' : 'text-primary-600'}`}>
+              Coming Soon
+            </h2>
+            <p className={`text-lg sm:text-xl leading-relaxed transition-colors duration-300 ${isDark ? 'text-primary-200' : 'text-primary-700'}`}>
+              We're working hard to bring you personalized meal planning! This feature will help you plan your meals for the week or month ahead.
+            </p>
+            <p className={`mt-4 text-base transition-colors duration-300 ${isDark ? 'text-primary-300' : 'text-primary-600'}`}>
+              If you'd like to see this feature sooner, let us know! We release features based on user requests.
+            </p>
+          </div>
+          <Link
+            href="/dashboard"
+            className={`inline-flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-colors duration-300 ${
+              isDark 
+                ? 'bg-primary-500 hover:bg-primary-600 text-white' 
+                : 'bg-primary-500 hover:bg-primary-600 text-white'
+            }`}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back to Dashboard</span>
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

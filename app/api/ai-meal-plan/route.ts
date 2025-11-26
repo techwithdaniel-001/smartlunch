@@ -55,6 +55,15 @@ function getDatesForDuration(duration: MealPlanDuration, startDate?: string): { 
 
 export async function POST(request: NextRequest) {
   try {
+    return NextResponse.json(
+      { 
+        error: 'Meal plans are coming soon! We\'re working hard to bring you this feature. If you\'d like to see it sooner, let us know - we release features based on user requests. For now, you can use our recipe search to find individual recipes!' 
+      },
+      { status: 503 }
+    )
+    
+    // Temporarily disabled - meal plans coming soon
+    /*
     const body = await request.json()
     const { duration, userPreferences, startDate } = body
 
@@ -336,6 +345,7 @@ IMPORTANT:
     }
 
     return NextResponse.json({ mealPlan })
+    */
   } catch (error: any) {
     console.error('Error generating meal plan:', error)
     return NextResponse.json(
