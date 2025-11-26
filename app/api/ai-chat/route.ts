@@ -30,12 +30,14 @@ export async function POST(request: NextRequest) {
     const systemPrompt = `You are a helpful AI assistant for Smart Lunch, an app that helps busy parents create fun, healthy, kid-friendly lunch recipes.
 
 CRITICAL: BE CONCISE AND BRIEF!
-- When modifying an existing recipe, just say "Recipe updated!" or "Changed to your preference" - DO NOT repeat the recipe details
+- When modifying an existing recipe, you MUST return the complete updated recipe in JSON format
+- After returning the JSON, you can say "Recipe updated!" or "Changed to your preference" - DO NOT repeat the recipe details in text
 - The recipe will automatically update on the right side, so you don't need to show it in chat
 - Only provide detailed explanations when the user explicitly asks for help or clarification
 - Keep responses short and to the point - busy parents don't have time for long messages
 - NEVER repeat the same response twice - if you already answered a question, just acknowledge briefly or provide a different angle
 - If the user asks about alternatives for removed ingredients, provide ONE clear, concise response with specific options
+- MOST IMPORTANT: When user requests ANY recipe modification (vegan, ingredient change, etc.), you MUST return the complete updated recipe JSON - this is not optional!
 
 Your role:
 - Generate creative, kid-friendly lunch recipes that are EASY for busy parents to make
@@ -44,7 +46,8 @@ Your role:
 - Provide practical cooking tips ONLY when asked
 
 When modifying recipes:
-- ALWAYS return the COMPLETE updated recipe in JSON format - never return partial recipes
+- CRITICAL: You MUST ALWAYS return the COMPLETE updated recipe in JSON format - this is REQUIRED, not optional
+- The JSON must be valid and complete with ALL fields (name, ingredients, instructions, etc.)
 - Make the change requested (e.g., "turkey to chicken" = replace turkey with chicken)
 - For step modifications (e.g., "break step 2 into two steps", "make step 3 more detailed"):
   * You can split, combine, or modify individual steps
@@ -52,7 +55,10 @@ When modifying recipes:
   * Maintain the logical flow of the recipe
   * Keep step numbering sequential
 - For dietary changes (vegan, vegetarian, gluten-free, etc.), replace ALL non-compliant ingredients:
-  * Vegan: Replace all animal products (meat, dairy, eggs, honey) with REAL plant-based alternatives
+  * Vegan: Replace ALL animal products (meat, dairy, eggs, honey) with REAL plant-based alternatives
+    * Eggs → flax eggs (1 tbsp ground flaxseed + 3 tbsp water per egg), chia eggs, or applesauce
+    * Dairy → plant-based milk (almond, oat, soy), vegan butter, nutritional yeast for cheese flavor
+    * Meat → tofu, tempeh, legumes, mushrooms
   * Vegetarian: Replace all meat with REAL plant-based proteins (tofu, tempeh, legumes, etc.)
   * Gluten-free: Replace wheat/gluten ingredients with REAL gluten-free alternatives (rice, quinoa, gluten-free pasta, etc.)
   * Dairy-free: Replace all dairy with REAL non-dairy alternatives (almond milk, coconut milk, vegan cheese, etc.)
@@ -61,10 +67,11 @@ When modifying recipes:
   * DO NOT create fake product names
   * Use actual alternatives: for dairy-free pasta, use regular pasta (pasta doesn't contain dairy) or specify "dairy-free sauce"
   * Research real alternatives before suggesting them
-- Update instructions to reflect ingredient changes
+- Update instructions to reflect ingredient changes - mention the new ingredients in the steps
 - Adjust cooking times/methods if needed for substitutions
 - Keep all other aspects the same unless specifically asked to change them
 - Your chat message should be VERY SHORT - just acknowledge the change (e.g., "Made it vegan!" or "Recipe updated!")
+- IMPORTANT: Even if you say "Recipe updated!", you MUST still return the complete JSON recipe
 
 When generating recipes, always return them in this JSON format:
 {
@@ -205,65 +212,99 @@ Focus on making recipes that are:
     // Try to extract recipe from the response
     let recipe: Recipe | null = null
     try {
-      // Look for JSON in the response
-      const jsonMatch = assistantMessage.match(/\{[\s\S]*\}/)
+      // Look for JSON in the response - try multiple patterns
+      let jsonMatch = assistantMessage.match(/\{[\s\S]*\}/)
+      
+      // Also try to find JSON in code blocks
+      if (!jsonMatch) {
+        const codeBlockMatch = assistantMessage.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
+        if (codeBlockMatch) {
+          jsonMatch = [codeBlockMatch[1], codeBlockMatch[1]]
+        }
+      }
+      
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
-        if (parsed.name && parsed.ingredients) {
+        const jsonString = jsonMatch[0]
+        console.log('Found JSON in response, attempting to parse:', jsonString.substring(0, 200))
+        const parsed = JSON.parse(jsonString)
+        console.log('Parsed recipe:', parsed.name, 'with', parsed.ingredients?.length, 'ingredients')
+        
+        if (parsed.name && parsed.ingredients && Array.isArray(parsed.ingredients)) {
           recipe = {
             id: currentRecipe?.id || `ai-${Date.now()}`,
             ...parsed,
           } as Recipe
           
+          console.log('Recipe created successfully:', recipe.name)
+          console.log('Recipe ingredients:', recipe.ingredients.map(i => i.name).join(', '))
+          
           // Generate image for the recipe (important for final preview)
-          try {
-            const mainIngredients = recipe.ingredients.slice(0, 5).map(i => i.name).join(', ')
-            const presentation = recipe.presentationTips && recipe.presentationTips.length > 0 
-              ? recipe.presentationTips[0] 
-              : 'beautifully arranged on a plate'
-            const imagePrompt = `Professional food photography of ${recipe.name}, a delicious cooked and prepared dish. The final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
-            
-            console.log('Generating image for recipe:', recipe.name)
-            console.log('Image prompt:', imagePrompt)
-            
-            const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-              },
-              body: JSON.stringify({
-                model: 'dall-e-3',
-                prompt: imagePrompt,
-                n: 1,
-                size: '1024x1024',
-                quality: 'standard',
-              }),
-            })
+          // Do this asynchronously so we don't block the response
+          const generateImage = async () => {
+            try {
+              const mainIngredients = recipe.ingredients.slice(0, 5).map(i => i.name).join(', ')
+              const presentation = recipe.presentationTips && recipe.presentationTips.length > 0 
+                ? recipe.presentationTips[0] 
+                : 'beautifully arranged on a plate'
+              const imagePrompt = `Professional food photography of ${recipe.name}, a delicious cooked and prepared dish. The final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
+              
+              console.log('Generating image for recipe:', recipe.name)
+              console.log('Image prompt:', imagePrompt)
+              
+              const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                  model: 'dall-e-3',
+                  prompt: imagePrompt,
+                  n: 1,
+                  size: '1024x1024',
+                  quality: 'standard',
+                }),
+              })
 
-            if (!imageResponse.ok) {
-              const errorText = await imageResponse.text()
-              console.error('Image generation failed:', imageResponse.status, errorText)
-              throw new Error(`Image generation failed: ${imageResponse.status}`)
-            }
+              if (!imageResponse.ok) {
+                const errorText = await imageResponse.text()
+                console.error('Image generation failed:', imageResponse.status, errorText)
+                return null
+              }
 
-            const imageData = await imageResponse.json()
-            console.log('Image generation response:', imageData)
-            
-            if (imageData.data && imageData.data[0]?.url) {
-              recipe.imageUrl = imageData.data[0].url
-              console.log('Image URL set:', recipe.imageUrl)
-            } else {
-              console.error('No image URL in response:', imageData)
+              const imageData = await imageResponse.json()
+              console.log('Image generation response received')
+              
+              if (imageData.data && imageData.data[0]?.url) {
+                const imageUrl = imageData.data[0].url
+                console.log('Image URL generated:', imageUrl)
+                return imageUrl
+              } else {
+                console.error('No image URL in response:', imageData)
+                return null
+              }
+            } catch (imageError: any) {
+              console.error('Image generation error:', imageError)
+              console.error('Error details:', {
+                message: imageError?.message,
+                stack: imageError?.stack,
+                name: imageError?.name
+              })
+              return null
             }
-          } catch (imageError: any) {
-            console.error('Image generation error:', imageError)
-            console.error('Error details:', {
-              message: imageError?.message,
-              stack: imageError?.stack,
-              name: imageError?.name
-            })
-            // Continue without image if generation fails, but log it
+          }
+          
+          // Generate image and wait for it (but don't block too long)
+          const imageUrl = await Promise.race([
+            generateImage(),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)) // 10 second timeout
+          ])
+          
+          if (imageUrl) {
+            recipe.imageUrl = imageUrl
+            console.log('Image URL set on recipe:', recipe.imageUrl)
+          } else {
+            console.log('Image generation timed out or failed, continuing without image')
             recipe.imageUrl = undefined
           }
           
@@ -277,9 +318,20 @@ Focus on making recipes that are:
               ? "Recipe updated to your preference!" 
               : "Here's your recipe!"
           }
+        } else {
+          console.error('Parsed JSON missing required fields:', {
+            hasName: !!parsed.name,
+            hasIngredients: !!parsed.ingredients,
+            isIngredientsArray: Array.isArray(parsed.ingredients)
+          })
         }
+      } else {
+        console.log('No JSON found in AI response. Full response:', assistantMessage.substring(0, 500))
       }
-    } catch (e) {
+    } catch (e: any) {
+      console.error('Error parsing recipe JSON:', e)
+      console.error('Error message:', e?.message)
+      console.error('Response that failed to parse:', assistantMessage.substring(0, 500))
       // If no recipe found, that's okay - just return the message
     }
 
