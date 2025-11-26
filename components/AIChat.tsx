@@ -109,9 +109,28 @@ export default function AIChat({ onRecipeGenerated, currentRecipe, availableIngr
           console.log('Recipe in response:', data.recipe)
           console.log('Recipe ingredients:', data.recipe?.ingredients)
 
+          // Clean the message to remove any JSON that might have slipped through
+          let cleanMessage = data.message || ''
+          // Remove JSON code blocks
+          cleanMessage = cleanMessage.replace(/```json\s*\{[\s\S]*?\}\s*```/gi, '').trim()
+          // Remove plain JSON objects
+          cleanMessage = cleanMessage.replace(/\{[\s\S]*\}/, '').trim()
+          // Remove any remaining code block markers
+          cleanMessage = cleanMessage.replace(/```[\s\S]*?```/g, '').trim()
+          // Remove any text that looks like it's introducing JSON
+          cleanMessage = cleanMessage.replace(/here'?s?\s+(the\s+)?(updated\s+)?(recipe|json):?/gi, '').trim()
+          cleanMessage = cleanMessage.replace(/here'?s?\s+(the\s+)?(recipe|json):?/gi, '').trim()
+          
+          // If message is empty after cleaning, use a default
+          if (!cleanMessage || cleanMessage.length === 0) {
+            cleanMessage = currentRecipe 
+              ? "Recipe updated to your preference!" 
+              : "Here's your recipe!"
+          }
+
           const assistantMessage: Message = {
             role: 'assistant',
-            content: data.message,
+            content: cleanMessage,
             recipe: data.recipe,
           }
 

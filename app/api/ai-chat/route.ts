@@ -309,8 +309,16 @@ Focus on making recipes that are:
           }
           
           // If we found a recipe, make the message super brief
-          // Remove the JSON from the message and keep only a short acknowledgment
+          // Remove ALL JSON from the message (including code blocks)
+          // Remove JSON code blocks (```json ... ```)
+          assistantMessage = assistantMessage.replace(/```json\s*\{[\s\S]*?\}\s*```/gi, '').trim()
+          // Remove plain JSON objects
           assistantMessage = assistantMessage.replace(/\{[\s\S]*\}/, '').trim()
+          // Remove any remaining code block markers
+          assistantMessage = assistantMessage.replace(/```[\s\S]*?```/g, '').trim()
+          // Remove any text that looks like it's introducing JSON
+          assistantMessage = assistantMessage.replace(/here'?s?\s+(the\s+)?(updated\s+)?(recipe|json):?/gi, '').trim()
+          assistantMessage = assistantMessage.replace(/here'?s?\s+(the\s+)?(recipe|json):?/gi, '').trim()
           
           // If message is empty or too long after removing JSON, use a brief default
           if (!assistantMessage || assistantMessage.length > 100) {
