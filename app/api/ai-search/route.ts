@@ -177,17 +177,54 @@ Generate a recipe based on: "${query}"`
       },
     }
 
-    // Return recipe immediately - image generation happens in background (optional)
-    // This makes recipe generation much faster
+    // Generate image for the recipe - users need to see what the food looks like
+    try {
+      const mainIngredients = recipe.ingredients.slice(0, 5).map(i => i.name).join(', ')
+      const presentation = recipe.presentationTips && recipe.presentationTips.length > 0 
+        ? recipe.presentationTips[0] 
+        : 'beautifully arranged on a plate'
+      const imagePrompt = `Professional food photography of ${recipe.name}, a delicious cooked and prepared dish. The final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
+      
+      console.log('Generating real AI image for recipe:', recipe.name)
+      
+      const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'dall-e-3',
+          prompt: imagePrompt,
+          n: 1,
+          size: '1024x1024',
+          quality: 'standard',
+        }),
+      })
+
+      if (imageResponse.ok) {
+        const imageData = await imageResponse.json()
+        if (imageData.data && imageData.data[0]?.url) {
+          recipe.imageUrl = imageData.data[0].url
+          console.log('✅ Real AI image generated:', recipe.imageUrl)
+        } else {
+          console.warn('⚠️ No image URL in response')
+        }
+      } else {
+        const errorText = await imageResponse.text()
+        console.error('Image generation failed:', imageResponse.status, errorText)
+      }
+    } catch (imageError: any) {
+      console.error('Image generation error:', imageError)
+      // Continue without image - UI will show loading state
+    }
+
     return NextResponse.json({
       recipe: {
         ...recipe,
-        imageUrl: undefined, // Image will be generated on-demand when viewing recipe details
+        imageUrl: recipe.imageUrl, // Include the generated image URL
       },
     })
-
-    // Note: Image generation moved to recipe detail page for faster initial response
-    // Images can be generated on-demand when user views the full recipe
   } catch (error: any) {
     console.error('AI Search Error:', error)
     return NextResponse.json(

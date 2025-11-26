@@ -241,6 +241,7 @@ Focus on making recipes that are:
           // Generate image for the recipe (important for final preview)
           // Do this asynchronously so we don't block the response
           const generateImage = async () => {
+            if (!recipe) return null
             try {
               const mainIngredients = recipe.ingredients.slice(0, 5).map(i => i.name).join(', ')
               const presentation = recipe.presentationTips && recipe.presentationTips.length > 0 
@@ -248,7 +249,7 @@ Focus on making recipes that are:
                 : 'beautifully arranged on a plate'
               const imagePrompt = `Professional food photography of ${recipe.name}, a delicious cooked and prepared dish. The final prepared meal showing ${mainIngredients} as they appear when cooked and ready to eat. ${presentation}. Realistic food photography, natural lighting, appetizing colors, kid-friendly lunch presentation, on a clean white plate or colorful bento box, overhead or 45-degree angle view, sharp focus, professional restaurant quality, mouth-watering, photorealistic, no illustrations or drawings, actual food photography.`
               
-              console.log('Generating image for recipe:', recipe.name)
+              console.log('Generating real AI image for recipe:', recipe.name)
               console.log('Image prompt:', imagePrompt)
               
               const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
@@ -294,18 +295,20 @@ Focus on making recipes that are:
             }
           }
           
-          // Generate image and wait for it (but don't block too long)
+          // Generate image - wait longer to ensure we get a real image
+          // This is important for user experience - they need to see what the food looks like
           const imageUrl = await Promise.race([
             generateImage(),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)) // 10 second timeout
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 30000)) // 30 second timeout - DALL-E can take time
           ])
           
           if (imageUrl) {
             recipe.imageUrl = imageUrl
-            console.log('Image URL set on recipe:', recipe.imageUrl)
+            console.log('✅ Real AI image generated and set on recipe:', recipe.imageUrl)
           } else {
-            console.log('Image generation timed out or failed, continuing without image')
-            recipe.imageUrl = undefined
+            console.warn('⚠️ Image generation timed out or failed - will retry or show placeholder')
+            // Don't set undefined - let it retry or show loading state
+            // The UI will show "AI image generating..." if imageUrl is missing
           }
           
           // If we found a recipe, make the message super brief
