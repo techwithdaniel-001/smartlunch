@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { ArrowRight, Sparkles, Clock, Users, Heart, ChefHat, CheckCircle2, Star, X, Search, MessageSquare, BookOpen, ChefHat as ChefHatIcon, CheckCircle, Loader2, Lock } from 'lucide-react'
 import Auth from './Auth'
@@ -9,9 +10,9 @@ import { Recipe } from '@/data/recipes'
 import { useTheme } from '@/contexts/ThemeContext'
 
 export default function LandingPage() {
+  const router = useRouter()
   const { theme } = useTheme()
   const [showAuth, setShowAuth] = useState(false)
-  const [showStory, setShowStory] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [previewRecipe, setPreviewRecipe] = useState<Recipe | null>(null)
@@ -83,7 +84,7 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => setShowStory(true)}
+                onClick={() => router.push('/story')}
                 className={`hidden sm:block px-4 py-2 transition-colors ${isDark ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'}`}
               >
                 Our Story
@@ -134,7 +135,7 @@ export default function LandingPage() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <button
-                  onClick={() => setShowStory(true)}
+                  onClick={() => router.push('/story')}
                   className="px-8 py-4 border-2 border-slate-300 text-slate-700 rounded-xl font-medium hover:border-primary-500/50 hover:bg-primary-500/10 transition-all flex items-center justify-center space-x-2"
                 >
                   <span>Our Story</span>
@@ -654,90 +655,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Story Modal */}
-      <AnimatePresence>
-        {showStory && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-colors duration-300 ${isDark ? 'bg-black/80' : 'bg-black/60'}`}
-            onClick={() => setShowStory(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className={`rounded-3xl p-8 sm:p-12 border-2 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative transition-colors duration-300 ${isDark ? 'bg-slate-900 border-primary-500/20' : 'bg-white border-primary-200'}`}
-            >
-              <button
-                onClick={() => setShowStory(false)}
-                className={`absolute top-6 right-6 w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 ${isDark ? 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-white hover:border-primary-500/50' : 'bg-slate-100/80 border-slate-200/50 text-slate-600 hover:text-slate-900 hover:border-primary-500/50'}`}
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="text-center mb-8">
-                <h2 className={`text-3xl sm:text-4xl md:text-5xl font-medium mb-6 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Our Story
-                </h2>
-                <div className="w-24 h-1 bg-gradient-to-r from-primary-500 to-primary-600 mx-auto rounded-full mb-8"></div>
-                
-                {/* Profile Image - Larger and Centered */}
-                <div className="flex justify-center mb-6">
-                  <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-full overflow-hidden border-4 shadow-xl transition-all duration-300 border-primary-500/50 hover:border-primary-500 hover:scale-105">
-                    <Image
-                      src="/assets/zahra.jpg"
-                      alt="Fathima Zahra"
-                      fill
-                      className="object-cover"
-                      priority
-                    />
-                  </div>
-                </div>
-                
-                {/* Name and Title - Centered */}
-                <div className="mb-8">
-                  <h3 className={`text-2xl sm:text-3xl font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>Fathima Zahra</h3>
-                  <p className="text-primary-500 text-lg">Founder & CEO</p>
-                </div>
-              </div>
-
-              <div className={`space-y-6 text-lg leading-relaxed text-center transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                <p>
-                  I started cooking lunches for my family when I was just <strong className={`transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>9 years old</strong>. 
-                  It became my responsibility, and I quickly learned how challenging it can be to create healthy, 
-                  delicious meals day after day especially when you're busy.
-                </p>
-                
-                <p>
-                  As I grew older, I saw the same struggle in families everywhere. Parents want to feed their 
-                  kids well, but between work, school, and life's demands, finding time to plan and prepare 
-                  nutritious lunches feels impossible.
-                </p>
-                
-                <p className={`text-xl font-medium transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  That's why I created Smart Lunch.
-                </p>
-                
-                <p>
-                  Now, I'm using AI powered recipes to help families everywhere enjoy lunches made with love. 
-                  Every recipe is designed to be quick, healthy, and kid approved because I understand what 
-                  it's like to be in your kitchen, trying to make something special for the people you care about.
-                </p>
-                
-                <div className={`pt-6 border-t transition-colors duration-300 ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
-                  <p className="text-primary-500 font-medium">
-                    Join thousands of families who are already making lunchtime easier, healthier, and more fun.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Features Section */}
       <section className={`py-20 px-4 sm:px-6 lg:px-8 transition-colors duration-300 ${isDark ? 'bg-slate-950' : 'bg-white'}`}>
         <div className="max-w-6xl mx-auto">
@@ -864,7 +781,7 @@ export default function LandingPage() {
               <ul className="space-y-2">
                 <li>
                   <button
-                    onClick={() => setShowStory(true)}
+                    onClick={() => router.push('/story')}
                     className={`hover:text-primary-500 transition-colors text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}
                   >
                     Our Story
