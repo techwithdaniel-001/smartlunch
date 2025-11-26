@@ -33,16 +33,20 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
     
     // Check if document exists to preserve savedAt timestamp
     const docSnap = await getDoc(recipeRef)
-    const existingData = docSnap.exists() ? docSnap.data() : null
+    const exists = docSnap.exists()
+    const existingData = exists ? docSnap.data() : null
     
-    // Simple data structure - just like userPreferences
+    // Ensure userId is explicitly set to current user's uid
     const recipeData = {
-      userId: currentUser.uid,
+      userId: currentUser.uid, // Explicitly set to ensure it matches
       recipeId: recipe.id,
       recipe: recipe,
       savedAt: existingData?.savedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
+    
+    // Explicitly set userId again to ensure it's correct
+    recipeData.userId = currentUser.uid
     
     // Debug: Log what we're trying to save
     console.log('Attempting to save recipe:', {
@@ -51,19 +55,25 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
       recipeDataUserId: recipeData.userId,
       userIdsMatch: currentUser.uid === recipeData.userId,
       hasRecipe: !!recipeData.recipe,
-      hasRecipeId: !!recipeData.recipeId
+      hasRecipeId: !!recipeData.recipeId,
+      exists: exists,
+      existingUserId: existingData?.userId
     })
     
-    // Use setDoc with merge: true - simple like userPreferences
-    await setDoc(recipeRef, recipeData, { merge: true })
+    // Use setDoc without merge to ensure clean write
+    // This ensures userId is always set correctly
+    await setDoc(recipeRef, recipeData)
     
     console.log('Recipe saved successfully!')
     
     return true
   } catch (error: any) {
     console.error('Error saving recipe to Firestore:', error)
+    console.error('Error code:', error?.code)
+    console.error('Error message:', error?.message)
     
     if (error?.code === 'permission-denied') {
+      console.error('Permission denied - check rules are deployed and userId matches')
       throw new Error('Permission denied. Please check Firestore security rules are deployed.')
     }
     if (error?.code === 'unavailable' || error?.code === 'deadline-exceeded' || error?.code === 'failed-precondition') {
