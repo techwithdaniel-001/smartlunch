@@ -490,17 +490,45 @@ export default function RecipeDetail({ recipe, onBack, availableIngredients, onR
   }
 
   const handleRecipeUpdated = (updatedRecipe: Recipe) => {
+    console.log('Recipe update received:', updatedRecipe)
+    console.log('Updated recipe ingredients:', updatedRecipe.ingredients)
+    console.log('Current recipe ingredients before update:', currentRecipe.ingredients)
+    
     const wasInCookingMode = cookingMode
-    setCurrentRecipe(updatedRecipe)
+    
+    // Ensure we have a complete recipe object with all fields properly merged
+    const completeRecipe: Recipe = {
+      ...currentRecipe, // Preserve existing fields
+      ...updatedRecipe, // Overwrite with updated fields
+      // Explicitly ensure ingredients array is updated (use updated if available, otherwise keep current)
+      ingredients: updatedRecipe.ingredients && updatedRecipe.ingredients.length > 0 
+        ? updatedRecipe.ingredients 
+        : currentRecipe.ingredients,
+      // Explicitly ensure instructions array is updated
+      instructions: updatedRecipe.instructions && updatedRecipe.instructions.length > 0
+        ? updatedRecipe.instructions
+        : currentRecipe.instructions,
+      // Preserve imageUrl if it exists in updated recipe
+      imageUrl: updatedRecipe.imageUrl || currentRecipe.imageUrl,
+    }
+    
+    console.log('Complete recipe after merge:', completeRecipe)
+    console.log('Final ingredients:', completeRecipe.ingredients)
+    
+    // Force a state update by creating a new object reference
+    setCurrentRecipe({ ...completeRecipe })
+    
     // Exit cooking mode when recipe is updated so user can start fresh
     setCookingMode(false)
     setCurrentStep(0)
     setCompletedSteps(new Set())
     setCheckedIngredients(new Set())
+    setRemovedIngredients(new Set()) // Clear removed ingredients list
     setTimerActive(false)
     setTimerSeconds(null)
+    
     if (onRecipeUpdated) {
-      onRecipeUpdated(updatedRecipe)
+      onRecipeUpdated(completeRecipe)
     }
     
     // Show notification that recipe was updated
