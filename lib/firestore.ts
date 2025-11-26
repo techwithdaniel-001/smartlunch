@@ -29,48 +29,56 @@ export async function saveRecipeToFirestore(userId: string, recipe: Recipe) {
       throw new Error('User ID does not match authenticated user')
     }
     
+    // Use userId_recipeId as document ID to ensure uniqueness per user
     const recipeRef = doc(db, SAVED_RECIPES_COLLECTION, `${userId}_${recipe.id}`)
     
     // Check if document exists to preserve savedAt timestamp
     const docSnap = await getDoc(recipeRef)
-    const exists = docSnap.exists()
-    const existingData = exists ? docSnap.data() : null
+    const existingData = docSnap.exists() ? docSnap.data() : null
     
-    // Ensure userId is explicitly set to current user's uid
-    const recipeData = {
-      userId: currentUser.uid, // Explicitly set to ensure it matches
+    // Build the data object - ensure userId is FIRST and explicitly set
+    const recipeData: any = {
+      userId: currentUser.uid, // MUST be first and match auth.uid
       recipeId: recipe.id,
       recipe: recipe,
       savedAt: existingData?.savedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
     
+    // Double-check userId is set correctly
+    if (recipeData.userId !== currentUser.uid) {
+      recipeData.userId = currentUser.uid
+    }
+    
     // Debug: Log what we're trying to save
-    console.log('Attempting to save recipe:', {
+    console.log('Saving recipe:', {
       documentId: `${userId}_${recipe.id}`,
-      userId: currentUser.uid,
-      recipeDataUserId: recipeData.userId,
-      userIdsMatch: currentUser.uid === recipeData.userId,
-      hasRecipe: !!recipeData.recipe,
-      hasRecipeId: !!recipeData.recipeId,
-      exists: exists,
-      existingUserId: existingData?.userId
+      authUid: currentUser.uid,
+      dataUserId: recipeData.userId,
+      match: recipeData.userId === currentUser.uid,
+      recipeName: recipe.name
     })
     
-    // Use setDoc with merge to handle both create and update
-    // This ensures userId is always set correctly and works with security rules
-    await setDoc(recipeRef, recipeData, { merge: true })
+    // Use setDoc without merge - simpler and works better with rules
+    await setDoc(recipeRef, recipeData)
     
     console.log('Recipe saved successfully!')
-    
     return true
   } catch (error: any) {
-    console.error('Error saving recipe to Firestore:', error)
-    console.error('Error code:', error?.code)
-    console.error('Error message:', error?.message)
+    console.error('Error saving recipe:', error)
+    console.error('Error details:', {
+      code: error?.code,
+      message: error?.message,
+      authUid: auth.currentUser?.uid,
+      userId: userId
+    })
     
     if (error?.code === 'permission-denied') {
-      console.error('Permission denied - check rules are deployed and userId matches')
+      console.error('PERMISSION DENIED - Debug info:', {
+        currentUser: auth.currentUser?.uid,
+        userId: userId,
+        match: auth.currentUser?.uid === userId
+      })
       throw new Error('Permission denied. Please check Firestore security rules are deployed.')
     }
     if (error?.code === 'unavailable' || error?.code === 'deadline-exceeded' || error?.code === 'failed-precondition') {
@@ -104,6 +112,7 @@ export async function removeRecipeFromFirestore(userId: string, recipeId: string
 
 export async function getUserSavedRecipes(userId: string): Promise<Recipe[]> {
   try {
+    // Filter by userId to get only this user's recipes
     const q = query(
       collection(db, SAVED_RECIPES_COLLECTION),
       where('userId', '==', userId)
@@ -161,13 +170,14 @@ export async function updateSavedRecipe(userId: string, recipe: Recipe) {
     const docSnap = await getDoc(recipeRef)
     
     if (docSnap.exists()) {
+      const data = docSnap.data()
       await setDoc(recipeRef, {
-        userId,
+        userId: userId,
         recipeId: recipe.id,
         recipe: recipe,
-        savedAt: docSnap.data().savedAt, // Keep original savedAt
+        savedAt: data.savedAt, // Keep original savedAt
         updatedAt: new Date().toISOString(),
-      }, { merge: true })
+      })
       return true
     }
     return false

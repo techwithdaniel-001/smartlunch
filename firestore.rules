@@ -1,23 +1,24 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Saved recipes collection - simplified to match userPreferences pattern
+    // Saved recipes collection - simplified approach
     match /savedRecipes/{recipeId} {
-      // Users can read their own saved recipes
-      allow read: if request.auth != null && (
-        !resource.exists || 
-        resource.data.userId == request.auth.uid
-      );
-      
-      // Users can write (create/update) their own saved recipes
-      // Check that userId in the data matches the authenticated user
-      allow write: if request.auth != null && 
-        request.resource.data.userId == request.auth.uid &&
+      // Users can read recipes that belong to them
+      allow read: if request.auth != null && 
         (!resource.exists || resource.data.userId == request.auth.uid);
       
-      // Users can delete their own saved recipes
+      // Users can create recipes with their userId
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own recipes
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own recipes
       allow delete: if request.auth != null && 
-        (!resource.exists || resource.data.userId == request.auth.uid);
+        resource.data.userId == request.auth.uid;
     }
     
     // User preferences collection
