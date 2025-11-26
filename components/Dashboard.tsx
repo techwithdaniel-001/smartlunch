@@ -389,20 +389,29 @@ export default function Dashboard({
               className={`rounded-2xl sm:rounded-3xl border border-primary-500/30 p-6 sm:p-8 max-w-md w-full shadow-2xl transition-colors duration-300 ${isDark ? 'glass-effect' : 'bg-white'}`}
             >
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-500/20 border-4 border-primary-500/30 mb-4">
-                  <Calendar className="w-8 h-8 text-primary-500" />
+                {/* Zahra's Photo */}
+                <div className="inline-flex items-center justify-center mb-4">
+                  <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-primary-500/50 shadow-lg">
+                    <Image
+                      src="/assets/zahra.jpg"
+                      alt="Fathima Zahra"
+                      fill
+                      className="object-cover"
+                      priority
+                    />
+                  </div>
                 </div>
                 <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-primary-900'}`}>
-                  Meal Plans
+                  Hey there{user?.displayName ? ` ${user.displayName.split(' ')[0]}` : ''}! 👋
                 </h3>
-                <h4 className={`text-xl font-medium mb-4 transition-colors duration-300 ${isDark ? 'text-primary-300' : 'text-primary-600'}`}>
-                  Coming Soon!
+                <h4 className={`text-lg font-medium mb-4 transition-colors duration-300 ${isDark ? 'text-primary-300' : 'text-primary-600'}`}>
+                  It's Zahra from Smart Lunch
                 </h4>
               </div>
 
               <div className={`space-y-4 mb-6 transition-colors duration-300 ${isDark ? 'text-primary-200' : 'text-primary-700'}`}>
                 <p className="text-base leading-relaxed">
-                  We're working hard to bring you personalized meal planning! This feature will help you plan your meals for the week or month ahead.
+                  I wanted to let you know that my team and I are working hard to bring you personalized meal planning! This feature will help you plan your meals for the week or month ahead.
                 </p>
                 <p className="text-sm">
                   If you'd like to see this feature sooner, let us know! We release features based on user requests.
